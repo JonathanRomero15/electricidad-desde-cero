@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estrategia de Algoritmo — Electricidad Residencial</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{--naranja:#f5a623;--oscuro:#05080f;--panel:#0d1420;--panel2:#111e30;--texto:#ddeeff;--gris:#3a5070;--verde:#00d97e;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--oscuro);color:var(--texto);font-family:'Barlow Condensed',sans-serif;padding:30px 20px 60px;}
+  .bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(245,166,35,.06) 0%,transparent 60%),var(--oscuro);}
+  .wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;}
+  h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(38px,7vw,64px);color:#fff;letter-spacing:2px;text-align:center;margin-bottom:6px;}
+  h1 span{background:linear-gradient(135deg,var(--naranja),#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .subtitle{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gris);margin-bottom:36px;letter-spacing:2px;}
+  .section{margin-bottom:28px;background:var(--panel);border:1px solid rgba(245,166,35,.1);border-radius:16px;overflow:hidden;}
+  .section-head{padding:14px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(245,166,35,.1);}
+  .s-icon{font-size:24px;}
+  .s-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:#fff;}
+  .s-badge{font-family:'JetBrains Mono',monospace;font-size:9px;margin-left:auto;padding:3px 10px;border-radius:10px;background:rgba(245,166,35,.12);color:var(--naranja);}
+  .section-body{padding:18px 20px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:600px){.grid2{grid-template-columns:1fr;}}
+  .tip-card{background:var(--panel2);border-radius:10px;padding:14px;}
+  .tip-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--naranja);margin-bottom:6px;letter-spacing:1px;}
+  .tip-text{font-size:13px;color:rgba(221,238,255,.8);line-height:1.6;}
+  .schedule{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px;}
+  .day{background:var(--panel2);border-radius:8px;padding:8px 4px;text-align:center;}
+  .day-name{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gris);}
+  .day-posts{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--naranja);line-height:1;}
+  .day-type{font-size:10px;color:rgba(221,238,255,.5);margin-top:2px;}
+  .keyword-cloud{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;}
+  .kw{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:20px;padding:4px 12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--naranja);}
+  .content-ideas{display:grid;grid-template-columns:1fr;gap:8px;}
+  .idea{background:var(--panel2);border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px;}
+  .idea-num{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--naranja);min-width:32px;line-height:1;opacity:.7;}
+  .idea-content{}
+  .idea-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;}
+  .idea-desc{font-size:12px;color:rgba(221,238,255,.6);line-height:1.5;}
+  .platform-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+  .platform-row:last-child{border-bottom:none;}
+  .plat-icon{font-size:22px;min-width:32px;}
+  .plat-info{flex:1;}
+  .plat-name{font-size:14px;font-weight:700;color:#fff;}
+  .plat-tip{font-size:12px;color:rgba(221,238,255,.5);margin-top:2px;}
+  .plat-freq{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--naranja);background:rgba(245,166,35,.1);padding:3px 10px;border-radius:20px;white-space:nowrap;}
+  .text-box{background:var(--panel2);border-radius:10px;padding:14px;font-size:12px;line-height:1.8;color:rgba(221,238,255,.8);white-space:pre-wrap;border-left:3px solid var(--naranja);margin-top:10px;max-height:160px;overflow-y:auto;}
+  .copy-btn{margin-top:8px;width:100%;padding:9px;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:7px;color:var(--naranja);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:1px;}
+  .copy-btn:hover{background:rgba(245,166,35,.18);}
+  .copy-btn.ok{background:rgba(0,217,126,.1);border-color:rgba(0,217,126,.3);color:var(--verde);}
+  .alert{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:10px;padding:14px 16px;margin-top:14px;font-size:13px;color:rgba(221,238,255,.8);line-height:1.6;}
+  .alert strong{color:var(--naranja);}
+  .divider{height:1px;background:linear-gradient(90deg,transparent,rgba(245,166,35,.15),transparent);margin:24px 0;}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+
+<h1>ESTRATEGIA DE <span>ALGORITMO</span></h1>
+<p class="subtitle">⚡ GUÍA COMPLETA PARA DOMINAR LAS REDES SOCIALES — CURSO ELECTRICIDAD</p>
+
+<!-- SEO WEB -->
+<div class="section">
+  <div class="section-head" style="background:linear-gradient(135deg,rgba(245,166,35,.15),transparent);">
+    <span class="s-icon">🌐</span>
+    <span class="s-title">SEO — Posicionamiento en Google</span>
+    <span class="s-badge">ACTIVADO ✅</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:13px;color:rgba(221,238,255,.7);margin-bottom:14px;">Tu sitio ya tiene SEO optimizado. Estas son las palabras clave que te posicionarán en Google:</p>
+    <div class="keyword-cloud">
+      <span class="kw">curso electricidad residencial</span>
+      <span class="kw">aprender electricidad online</span>
+      <span class="kw">electricidad desde cero</span>
+      <span class="kw">ley de ohm</span>
+      <span class="kw">circuitos electricos</span>
+      <span class="kw">instalaciones electricas</span>
+      <span class="kw">cables electricos calibre</span>
+      <span class="kw">interruptor diferencial</span>
+      <span class="kw">termomagnetico</span>
+      <span class="kw">normativa electrica</span>
+      <span class="kw">electricidad para principiantes</span>
+      <span class="kw">curso electricista</span>
+      <span class="kw">electricidad domiciliaria</span>
+      <span class="kw">tablero electrico</span>
+      <span class="kw">puesta a tierra</span>
+    </div>
+    <div class="alert" style="margin-top:14px;">
+      <strong>💡 Acción recomendada:</strong> Registra tu sitio en <strong>Google Search Console</strong> (search.google.com/search-console) para que Google indexe tu página más rápido. Es gratis y tarda 5 minutos.
+    </div>
+  </div>
+</div>
+
+<!-- CALENDARIO -->
+<div class="section">
+  <div class="section-head" style="background:linear-gradient(135deg,rgba(26,140,255,.15),transparent);">
+    <span class="s-icon">📅</span>
+    <span class="s-title">Calendario Semanal de Publicaciones</span>
+    <span class="s-badge">7 DÍAS</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:13px;color:rgba(221,238,255,.7);margin-bottom:12px;">Publica de forma consistente. La constancia es lo que activa el algoritmo:</p>
+    <div class="schedule">
+      <div class="day"><div class="day-name">LUN</div><div class="day-posts">2</div><div class="day-type">Tip + Reel</div></div>
+      <div class="day"><div class="day-name">MAR</div><div class="day-posts">1</div><div class="day-type">Story</div></div>
+      <div class="day"><div class="day-name">MIÉ</div><div class="day-posts">2</div><div class="day-type">Post + TikTok</div></div>
+      <div class="day"><div class="day-name">JUE</div><div class="day-posts">1</div><div class="day-type">Facebook</div></div>
+      <div class="day"><div class="day-name">VIE</div><div class="day-posts">2</div><div class="day-type">Reel + Story</div></div>
+      <div class="day"><div class="day-name">SÁB</div><div class="day-posts">1</div><div class="day-type">YouTube</div></div>
+      <div class="day"><div class="day-name">DOM</div><div class="day-posts">1</div><div class="day-type">Comunidad</div></div>
+    </div>
+    <div class="alert">
+      <strong>⏰ Mejor horario:</strong> Publica entre las <strong>19:00 y 21:00 hrs</strong> de lunes a viernes. Sábados de <strong>10:00 a 13:00 hrs</strong>. Evita domingos en la mañana.
+    </div>
+  </div>
+</div>
+
+<!-- IDEAS DE CONTENIDO -->
+<div class="section">
+  <div class="section-head" style="background:linear-gradient(135deg,rgba(0,217,126,.15),transparent);">
+    <span class="s-icon">💡</span>
+    <span class="s-title">30 Ideas de Contenido para Publicar</span>
+    <span class="s-badge">VIRAL POTENTIAL</span>
+  </div>
+  <div class="section-body">
+    <div class="content-ideas">
+      <div class="idea"><div class="idea-num">01</div><div class="idea-content"><div class="idea-title">¿Cuántos amperes consume tu ducha eléctrica?</div><div class="idea-desc">Dato sorprendente que genera interacción → respuesta: 25A → lleva al curso</div></div></div>
+      <div class="idea"><div class="idea-num">02</div><div class="idea-content"><div class="idea-title">El error más común al instalar un enchufe</div><div class="idea-desc">Contenido educativo de valor → genera guardados y compartidos</div></div></div>
+      <div class="idea"><div class="idea-num">03</div><div class="idea-content"><div class="idea-title">¿Qué significa el número en tu termomagnético?</div><div class="idea-desc">Pregunta que el 90% no sabe responder → alta curiosidad → viralidad</div></div></div>
+      <div class="idea"><div class="idea-num">04</div><div class="idea-content"><div class="idea-title">Diferencia entre cable negro y azul ¿lo sabías?</div><div class="idea-desc">Código de colores explicado en 30 segundos → muy compartible</div></div></div>
+      <div class="idea"><div class="idea-num">05</div><div class="idea-content"><div class="idea-title">Cómo calcular el cable correcto para tu cocina</div><div class="idea-desc">Fórmula práctica → demuestra el valor del curso</div></div></div>
+      <div class="idea"><div class="idea-num">06</div><div class="idea-content"><div class="idea-title">¿Por qué se dispara el diferencial? Las 3 causas</div><div class="idea-desc">Problema que todos tienen en casa → solución en el curso</div></div></div>
+      <div class="idea"><div class="idea-num">07</div><div class="idea-content"><div class="idea-title">Ley de Ohm explicada en 60 segundos</div><div class="idea-desc">La fórmula más importante → contenido educativo rápido</div></div></div>
+      <div class="idea"><div class="idea-num">08</div><div class="idea-content"><div class="idea-title">¿Cuánto cuesta tu ducha eléctrica al mes?</div><div class="idea-desc">Cálculo de consumo sorprendente → muy compartible</div></div></div>
+      <div class="idea"><div class="idea-num">09</div><div class="idea-content"><div class="idea-title">5 cosas que nunca debes hacer con la electricidad</div><div class="idea-desc">Lista de consejos de seguridad → alto engagement</div></div></div>
+      <div class="idea"><div class="idea-num">10</div><div class="idea-content"><div class="idea-title">Antes y después: tablero eléctrico bien instalado</div><div class="idea-desc">Visual impactante → genera confianza en tu expertise</div></div></div>
+    </div>
+    <div class="alert" style="margin-top:12px;">
+      <strong>🎯 Fórmula ganadora:</strong> Publica <strong>contenido de valor GRATIS</strong> (tips, explicaciones, trucos) → el algoritmo lo distribuye → los interesados van a tu curso. Nunca publiques solo "compra mi curso".
+    </div>
+  </div>
+</div>
+
+<!-- ESTRATEGIA POR RED -->
+<div class="section">
+  <div class="section-head" style="background:linear-gradient(135deg,rgba(254,44,85,.15),transparent);">
+    <span class="s-icon">📱</span>
+    <span class="s-title">Estrategia por Red Social</span>
+    <span class="s-badge">6 PLATAFORMAS</span>
+  </div>
+  <div class="section-body">
+    <div class="platform-row">
+      <span class="plat-icon">🎵</span>
+      <div class="plat-info">
+        <div class="plat-name">TikTok — PRIORIDAD #1</div>
+        <div class="plat-tip">Videos de 30-60 seg con tip eléctrico. Empieza con pregunta curiosa. El algoritmo distribuye sin seguidores. Usa subtítulos siempre.</div>
+      </div>
+      <span class="plat-freq">5x semana</span>
+    </div>
+    <div class="platform-row">
+      <span class="plat-icon">📸</span>
+      <div class="plat-info">
+        <div class="plat-name">Instagram Reels — PRIORIDAD #2</div>
+        <div class="plat-tip">Mismos videos de TikTok súbelos también aquí. Reels llegan a no seguidores. Usa carruseles para tips con múltiples pasos.</div>
+      </div>
+      <span class="plat-freq">4x semana</span>
+    </div>
+    <div class="platform-row">
+      <span class="plat-icon">🎥</span>
+      <div class="plat-info">
+        <div class="plat-name">YouTube Shorts — PRIORIDAD #3</div>
+        <div class="plat-tip">Mismos videos cortos. YouTube Shorts aparece en búsquedas de Google. Posiciona para "como instalar enchufe", "ley de ohm explicada" etc.</div>
+      </div>
+      <span class="plat-freq">3x semana</span>
+    </div>
+    <div class="platform-row">
+      <span class="plat-icon">📘</span>
+      <div class="plat-info">
+        <div class="plat-name">Facebook Grupos</div>
+        <div class="plat-tip">Busca grupos: "Electricistas Chile/México/Colombia", "Construcción y obras", "Maestros y técnicos". Publica tips de valor sin spam.</div>
+      </div>
+      <span class="plat-freq">2x semana</span>
+    </div>
+    <div class="platform-row">
+      <span class="plat-icon">💬</span>
+      <div class="plat-info">
+        <div class="plat-name">WhatsApp Estados</div>
+        <div class="plat-tip">Publica el tip del día en estado. Agrega el link del curso. Pide a contactos que reenvíen. Es el canal de mayor conversión.</div>
+      </div>
+      <span class="plat-freq">Diario</span>
+    </div>
+    <div class="platform-row">
+      <span class="plat-icon">💼</span>
+      <div class="plat-info">
+        <div class="plat-name">LinkedIn</div>
+        <div class="plat-tip">Posts profesionales sobre electricidad y construcción. Conecta con ingenieros, contratistas y técnicos. Audiencia con poder adquisitivo.</div>
+      </div>
+      <span class="plat-freq">1x semana</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPTS DE VIDEO -->
+<div class="section">
+  <div class="section-head" style="background:linear-gradient(135deg,rgba(255,0,0,.15),transparent);">
+    <span class="s-icon">🎬</span>
+    <span class="s-title">Scripts para Videos Virales</span>
+    <span class="s-badge">COPIAR Y GRABAR</span>
+  </div>
+  <div class="section-body">
+
+    <div class="tip-label" style="margin-bottom:6px;">VIDEO 1 — "¿Cuántos amperes consume tu ducha?"</div>
+    <div class="text-box" id="v1">¿Sabes cuántos amperes consume la ducha eléctrica de tu casa?
+
+[pausa dramática]
+
+¡25 amperes! Y si el cable es incorrecto... puede incendiarse.
+
+Por eso en mi curso de Electricidad Residencial desde Cero te enseño a calcular el cable correcto para cada artefacto de tu casa.
+
+Link en bio. 20% de descuento hoy.</div>
+    <button class="copy-btn" onclick="copiar('v1',this)">📋 COPIAR SCRIPT VIDEO 1</button>
+
+    <div class="divider"></div>
+
+    <div class="tip-label" style="margin-bottom:6px;">VIDEO 2 — "El error del diferencial"</div>
+    <div class="text-box" id="v2">¿Por qué se dispara el diferencial de tu casa?
+
+Hay 3 causas principales:
+
+Número 1: Hay una fuga de corriente hacia tierra.
+Número 2: Tienes un artefacto defectuoso conectado.
+Número 3: El diferencial está dañado.
+
+En mi curso online te explico cómo identificar y solucionar cada una.
+
+Electricidad Residencial desde Cero. Link en bio.</div>
+    <button class="copy-btn" onclick="copiar('v2',this)">📋 COPIAR SCRIPT VIDEO 2</button>
+
+    <div class="divider"></div>
+
+    <div class="tip-label" style="margin-bottom:6px;">VIDEO 3 — "Código de colores de cables"</div>
+    <div class="text-box" id="v3">¿Sabes qué significa el color de cada cable eléctrico?
+
+El cable ROJO o NEGRO es la FASE. ¡Cuidado, es el peligroso!
+
+El cable AZUL es el NEUTRO. Por donde regresa la corriente.
+
+El cable AMARILLO o VERDE es la TIERRA. Tu protección de vida.
+
+Aprende todo esto y más en mi curso de Electricidad Residencial desde Cero. 20% de descuento hoy. Link en bio.</div>
+    <button class="copy-btn" onclick="copiar('v3',this)">📋 COPIAR SCRIPT VIDEO 3</button>
+
+  </div>
+</div>
+
+<!-- LINK BIO -->
+<div class="section">
+  <div class="section-head" style="background:linear-gradient(135deg,rgba(245,166,35,.15),transparent);">
+    <span class="s-icon">🔗</span>
+    <span class="s-title">Link en Bio — Configúralo así</span>
+    <span class="s-badge">TODAS LAS REDES</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:13px;color:rgba(221,238,255,.7);margin-bottom:12px;">En Instagram, TikTok y YouTube pon en la bio:</p>
+    <div class="grid2">
+      <div class="tip-card">
+        <div class="tip-label">TEXTO DE BIO</div>
+        <div class="tip-text">⚡ Aprende Electricidad Residencial<br>🎓 Curso Online en Español<br>🎟️ 20% OFF hoy<br>👇 Entra al curso:</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-label">LINK A PONER EN BIO</div>
+        <div class="tip-text" style="word-break:break-all;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--naranja);">jonathanromero15.github.io/electricidad-desde-cero</div>
+      </div>
+    </div>
+    <div class="alert">
+      <strong>🎯 TIP CLAVE:</strong> En cada video di: <strong>"Link en bio para el 20% de descuento"</strong>. Esto dirige al algoritmo a mostrar tu contenido a personas interesadas en comprar.
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+function copiar(id,btn){
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>{
+    btn.textContent='✅ ¡COPIADO!';btn.classList.add('ok');
+    setTimeout(()=>{btn.textContent=btn.textContent.replace('✅ ¡COPIADO!','📋 COPIAR SCRIPT '+id.toUpperCase());btn.classList.remove('ok');},2000);
+  });
+}
+</script>
+</body>
+</html>
