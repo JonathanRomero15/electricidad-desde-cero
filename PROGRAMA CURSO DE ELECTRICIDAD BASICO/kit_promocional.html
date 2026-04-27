@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kit Promocional — Electricidad Residencial desde Cero</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --naranja:#f5a623;--naranja2:#ff6a00;--oscuro:#05080f;
+    --panel:#0d1420;--panel2:#111e30;--panel3:#0a1628;
+    --texto:#ddeeff;--gris:#3a5070;--verde:#00d97e;
+    --ig:#e1306c;--wa:#25d366;--fb:#1877f2;--tt:#fe2c55;--yt:#ff0000;--li:#0a66c2;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--oscuro);color:var(--texto);font-family:'Barlow Condensed',sans-serif;min-height:100vh;overflow-x:hidden;}
+
+  /* ── BG ── */
+  .bg{position:fixed;inset:0;z-index:0;
+    background:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(245,166,35,.07) 0%,transparent 60%),var(--oscuro);}
+  .grid{position:fixed;inset:0;z-index:0;
+    background-image:linear-gradient(rgba(245,166,35,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,166,35,.025) 1px,transparent 1px);
+    background-size:50px 50px;animation:gridMove 30s linear infinite;}
+  @keyframes gridMove{to{background-position:50px 50px;}}
+
+  /* ── LAYOUT ── */
+  .wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:40px 20px 80px;}
+
+  /* ── HERO HEADER ── */
+  .kit-header{text-align:center;margin-bottom:48px;animation:fadeUp .7s ease both;}
+  .kit-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);
+    border-radius:30px;padding:6px 18px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--naranja);
+    letter-spacing:2px;margin-bottom:16px;
+  }
+  .kit-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,8vw,72px);color:#fff;letter-spacing:2px;line-height:1;}
+  .kit-title span{background:linear-gradient(135deg,var(--naranja),var(--naranja2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .kit-sub{font-size:16px;color:rgba(221,238,255,.5);margin-top:8px;font-weight:400;}
+
+  /* ── VOICE PLAYER MINI ── */
+  .voice-mini{
+    background:linear-gradient(145deg,var(--panel),rgba(245,166,35,.04));
+    border:1px solid rgba(245,166,35,.2);border-radius:18px;
+    padding:20px 24px;margin-bottom:40px;
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    position:relative;overflow:hidden;animation:fadeUp .7s ease .1s both;
+  }
+  .voice-mini::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--naranja),transparent);}
+  .vm-wave{display:flex;align-items:center;gap:2px;height:32px;min-width:60px;}
+  .vm-bar{width:3px;border-radius:2px;background:linear-gradient(180deg,var(--naranja),var(--naranja2));height:4px;transition:height .08s;}
+  .vm-text{flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(221,238,255,.5);min-width:140px;transition:color .3s;}
+  .vm-text.on{color:var(--texto);}
+  .vm-controls{display:flex;gap:8px;align-items:center;}
+  .vm-btn{
+    background:linear-gradient(135deg,var(--naranja),var(--naranja2));
+    border:none;border-radius:8px;padding:9px 18px;
+    font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;
+    color:#000;cursor:pointer;transition:all .2s;
+    box-shadow:0 4px 20px rgba(245,166,35,.25);
+  }
+  .vm-btn:hover{transform:scale(1.05);box-shadow:0 6px 28px rgba(245,166,35,.45);}
+  .vm-btn2{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer;color:var(--texto);transition:all .2s;}
+  .vm-btn2:hover{background:rgba(255,255,255,.12);}
+  .vm-speed{display:flex;align-items:center;gap:6px;}
+  .vm-speed label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gris);}
+  .vm-speed span{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--naranja);min-width:30px;}
+  input[type=range]{accent-color:var(--naranja);width:70px;cursor:pointer;}
+
+  /* ── PLATFORM CARDS ── */
+  .platforms{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-bottom:40px;}
+
+  .platform-card{
+    background:var(--panel);border-radius:18px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.06);
+    animation:fadeUp .7s ease var(--delay, 0s) both;
+    transition:transform .2s,box-shadow .2s;
+  }
+  .platform-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.4);}
+
+  .card-head{padding:14px 18px;display:flex;align-items:center;gap:10px;}
+  .card-icon{font-size:24px;}
+  .card-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:#fff;}
+  .card-type{font-family:'JetBrains Mono',monospace;font-size:9px;margin-left:auto;padding:3px 8px;border-radius:10px;background:rgba(0,0,0,.3);color:rgba(255,255,255,.5);}
+
+  .card-body{padding:16px 18px;}
+
+  .text-box{
+    background:var(--panel3);border-radius:10px;padding:14px;
+    font-size:12.5px;line-height:1.75;color:rgba(221,238,255,.8);
+    white-space:pre-wrap;word-break:break-word;
+    border-left:3px solid var(--accent,var(--naranja));
+    max-height:200px;overflow-y:auto;margin-bottom:12px;
+    scrollbar-width:thin;scrollbar-color:var(--accent,var(--naranja)) var(--panel3);
+    font-family:'Barlow Condensed',sans-serif;font-size:13px;
+  }
+
+  .copy-btn{
+    width:100%;padding:10px;border:none;border-radius:8px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;
+    cursor:pointer;transition:all .2s;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--texto);
+  }
+  .copy-btn:hover{background:rgba(255,255,255,.12);}
+  .copy-btn.ok{background:rgba(0,217,126,.12);border-color:rgba(0,217,126,.3);color:var(--verde);}
+
+  /* ── HASHTAGS ── */
+  .hashtags-section{
+    background:var(--panel);border:1px solid rgba(245,166,35,.12);
+    border-radius:18px;padding:22px 24px;margin-bottom:40px;
+    animation:fadeUp .7s ease .5s both;
+  }
+  .hs-title{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--naranja);letter-spacing:1px;margin-bottom:14px;}
+  .hashtags-box{
+    background:var(--panel3);border-radius:10px;padding:14px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;
+    color:rgba(221,238,255,.7);line-height:1.9;border-left:3px solid var(--naranja);
+    margin-bottom:12px;
+  }
+  .hashtag{color:var(--naranja);margin-right:4px;}
+
+  /* ── TIPS ── */
+  .tips-section{
+    background:var(--panel);border:1px solid rgba(0,217,126,.12);
+    border-radius:18px;padding:22px 24px;
+    animation:fadeUp .7s ease .6s both;
+  }
+  .ts-title{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--verde);letter-spacing:1px;margin-bottom:16px;}
+  .tips-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
+  .tip{background:var(--panel3);border-radius:10px;padding:14px;}
+  .tip-head{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--naranja);margin-bottom:6px;letter-spacing:1px;}
+  .tip-body{font-size:13px;color:rgba(221,238,255,.7);line-height:1.5;}
+
+  /* ── PLATFORM COLORS ── */
+  .ig .card-head{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);}
+  .wa .card-head{background:linear-gradient(135deg,#25d366,#128c7e);}
+  .fb .card-head{background:linear-gradient(135deg,#1877f2,#0a4fa8);}
+  .tt .card-head{background:linear-gradient(135deg,#010101,#fe2c55);}
+  .yt .card-head{background:linear-gradient(135deg,#ff0000,#cc0000);}
+  .li .card-head{background:linear-gradient(135deg,#0a66c2,#004182);}
+  .wa .text-box{--accent:#25d366;}
+  .fb .text-box{--accent:#1877f2;}
+  .tt .text-box{--accent:#fe2c55;}
+  .yt .text-box{--accent:#ff0000;}
+  .li .text-box{--accent:#0a66c2;}
+
+  /* divider */
+  .divider{height:1px;background:linear-gradient(90deg,transparent,rgba(245,166,35,.15),transparent);margin:32px 0;}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="grid"></div>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="kit-header">
+    <div class="kit-badge">⚡ KIT COMPLETO DE PROMOCIÓN</div>
+    <h1 class="kit-title">PUBLICA EN TODAS<br><span>TUS REDES SOCIALES</span></h1>
+    <p class="kit-sub">Textos listos para copiar y pegar — Narración en voz incluida</p>
+
+    <!-- CUPÓN 20% -->
+    <div style="
+      display:inline-flex;align-items:center;gap:16px;
+      background:linear-gradient(135deg,rgba(0,217,126,.12),rgba(0,217,126,.04));
+      border:2px dashed rgba(0,217,126,.4);border-radius:16px;
+      padding:14px 24px;margin-top:18px;
+      animation:pulseCupon 2s ease infinite;
+    ">
+      <div style="text-align:left;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#00d97e;letter-spacing:2px;margin-bottom:3px;">🎟️ CUPÓN ACTIVO EN HOTMART</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#fff;letter-spacing:1px;line-height:1;">20% DE DESCUENTO</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(0,217,126,.7);margin-top:3px;">Código: <strong style="color:#00d97e;">DESCUENTO20</strong> — Se aplica automáticamente</div>
+      </div>
+      <div style="background:rgba(0,217,126,.15);border:1px solid rgba(0,217,126,.3);border-radius:10px;padding:10px 14px;text-align:center;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:38px;color:#00d97e;line-height:1;">20%</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(0,217,126,.7);">OFF</div>
+      </div>
+    </div>
+    <style>@keyframes pulseCupon{0%,100%{box-shadow:0 0 0 0 rgba(0,217,126,0)}50%{box-shadow:0 0 20px 4px rgba(0,217,126,.2)}}</style>
+
+    <!-- Temporizador -->
+    <div style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px;
+      background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:8px;padding:8px 18px;display:inline-flex;">
+      <span style="font-size:14px;">⏳</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#f5a623;">
+        Oferta válida por: <strong id="kit-timer">15:00</strong>
+      </span>
+    </div>
+
+    <div style="margin-top:16px;">
+      <a href="publicidad_voz.html" target="_blank" style="
+        display:inline-flex;align-items:center;gap:12px;
+        background:linear-gradient(135deg,#f5a623,#ff6a00);
+        color:#000;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;
+        padding:16px 44px;border-radius:14px;text-decoration:none;
+        transition:all .25s;box-shadow:0 8px 40px rgba(245,166,35,.35);
+      ">🔊 VER PUBLICIDAD CON 20% OFF</a>
+      <div style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#3a5070;">
+        La publicidad lleva directo al link de pago en Hotmart con el cupón aplicado
+      </div>
+    </div>
+  </div>
+
+  <!-- Voice Player Mini -->
+  <div class="voice-mini">
+    <div class="vm-wave" id="vmWave"></div>
+    <div class="vm-text" id="vmText">Presiona PLAY para escuchar el audio promocional completo...</div>
+    <div class="vm-controls">
+      <button class="vm-btn" id="vmPlayBtn" onclick="vmToggle()">▶ PLAY</button>
+      <button class="vm-btn2" onclick="vmStop()">⏹</button>
+      <button class="vm-btn2" onclick="vmReplay()">↺</button>
+      <div class="vm-speed">
+        <label>VEL</label>
+        <input type="range" id="vmSpeed" min="0.6" max="1.8" step="0.1" value="0.95" oninput="vmChangeSpeed(this.value)">
+        <span id="vmSpeedVal">0.95×</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Platform Cards -->
+  <div class="platforms">
+
+    <!-- INSTAGRAM -->
+    <div class="platform-card ig" style="--delay:.15s">
+      <div class="card-head">
+        <span class="card-icon">📸</span>
+        <span class="card-name">Instagram</span>
+        <span class="card-type">POST + STORIES + REELS</span>
+      </div>
+      <div class="card-body">
+        <div class="text-box" id="txt-ig">⚡ ¿Quieres aprender electricidad residencial desde CERO?
+
+🔌 Instalaciones eléctricas, cálculo de cables, protecciones y normativa chilena RIC 2021 — todo en un curso online.
+
+✅ 6 módulos completos
+✅ Videos en español
+✅ 8 calculadoras interactivas
+✅ 6 PDFs descargables
+✅ Certificado digital
+✅ Acceso y descarga de por vida
+
+🎟️ CUPÓN 20% OFF — Usa el código: DESCUENTO20
+💰 Solo $11.990 CLP (antes $14.990)
+
+🔒 Una vez que compras, recibes acceso inmediato a todo el programa para descargarlo y tenerlo de por vida.
+
+👇 Inscríbete ahora:
+🔗 https://electricidad-desde-cero.netlify.app/publicidad_voz.html
+
+#ElectricidadResidencial #CursoOnline #Electricidad #Chile #Electricista #InstalacionesElectricas #NCh4 #RIC2021 #CursoElectricidad #AprendeOnline</div>
+        <button class="copy-btn" onclick="copiar('txt-ig',this)">📋 COPIAR TEXTO INSTAGRAM</button>
+      </div>
+    </div>
+
+    <!-- WHATSAPP -->
+    <div class="platform-card wa" style="--delay:.2s">
+      <div class="card-head">
+        <span class="card-icon">💬</span>
+        <span class="card-name">WhatsApp</span>
+        <span class="card-type">MENSAJE DIRECTO + ESTADOS</span>
+      </div>
+      <div class="card-body">
+        <div class="text-box" id="txt-wa">⚡ *CURSO DE ELECTRICIDAD RESIDENCIAL DESDE CERO* ⚡
+
+Hola! Te comparto mi nuevo curso online 👇
+
+🔌 *Aprende paso a paso:*
+• Principios básicos y Ley de Ohm
+• Cálculo de cables y protecciones
+• Circuitos eléctricos residenciales
+• Normativa eléctrica chilena RIC 2021
+
+🎓 *Incluye:*
+✓ 6 módulos + videos en español
+✓ 8 calculadoras interactivas
+✓ 6 PDFs para descargar
+✓ Certificado digital
+✓ Acceso y descarga de *por vida*
+
+🎟️ *CUPÓN 20% OFF — Código: DESCUENTO20*
+💰 *$11.990 CLP* (antes $14.990)
+
+🔒 Una vez que compras, recibes acceso inmediato a todo el programa completo para descargarlo y tenerlo para siempre.
+
+👉 https://electricidad-desde-cero.netlify.app/publicidad_voz.html
+
+¿Te interesa? ¡Escríbeme si tienes dudas! 😊</div>
+        <button class="copy-btn" onclick="copiar('txt-wa',this)">📋 COPIAR TEXTO WHATSAPP</button>
+      </div>
+    </div>
+
+    <!-- FACEBOOK -->
+    <div class="platform-card fb" style="--delay:.25s">
+      <div class="card-head">
+        <span class="card-icon">📘</span>
+        <span class="card-name">Facebook</span>
+        <span class="card-type">POST + GRUPOS + MARKETPLACE</span>
+      </div>
+      <div class="card-body">
+        <div class="text-box" id="txt-fb">⚡ NUEVO CURSO ONLINE: Electricidad Residencial desde Cero 🔌
+
+¿Siempre quisiste entender cómo funciona la instalación eléctrica de tu casa? ¿Trabajas en construcción y necesitas reforzar tus conocimientos?
+
+👨‍🔧 Este curso es para técnicos, maestros, estudiantes y dueños de casa.
+
+📚 CONTENIDO COMPLETO:
+→ Módulo 1: Principios de la Electricidad
+→ Módulo 2: Fórmulas y Cálculos (Ley de Ohm)
+→ Módulo 3: Circuitos Eléctricos
+→ Módulo 4: Cables y Conductores (NCh 4)
+→ Módulo 5: Protecciones Eléctricas
+→ Módulo 6: Normativa RIC 2021 vigente
+
+📦 INCLUYE:
+✔ Videos en español
+✔ 8 calculadoras interactivas
+✔ 6 PDFs descargables
+✔ Certificado digital
+✔ Programa completo para descargar de por vida
+
+✅ UNA VEZ REALIZADA TU COMPRA, recibes acceso inmediato a toda la información y programa completo para descargarlo y tenerlo de por vida.
+
+🎟️ CUPÓN 20% OFF — Código: DESCUENTO20
+💰 PRECIO: $11.990 CLP (antes $14.990)
+
+🔗 Inscríbete aquí: https://electricidad-desde-cero.netlify.app/publicidad_voz.html
+
+¡Comparte con alguien que lo necesite! 👇</div>
+        <button class="copy-btn" onclick="copiar('txt-fb',this)">📋 COPIAR TEXTO FACEBOOK</button>
+      </div>
+    </div>
+
+    <!-- TIKTOK -->
+    <div class="platform-card tt" style="--delay:.3s">
+      <div class="card-head">
+        <span class="card-icon">🎵</span>
+        <span class="card-name">TikTok</span>
+        <span class="card-type">CAPTION + DUETS</span>
+      </div>
+      <div class="card-body">
+        <div class="text-box" id="txt-tt">⚡ ¿Sabes qué pasa si conectas mal un circuito en tu casa? 😱🔌
+
+Te lo explico todo en mi curso de Electricidad Residencial desde Cero 👇
+
+✅ 6 módulos completos
+✅ Videos en español
+✅ PDFs para descargar
+✅ Acceso de por vida
+
+🎟️ CUPÓN 20% OFF — Código: DESCUENTO20
+💰 $11.990 CLP (antes $14.990)
+
+🔒 Una vez que compras, descargas TODO el programa y lo tienes para siempre.
+
+🔗 Link en bio o aquí: https://electricidad-desde-cero.netlify.app/publicidad_voz.html
+
+#ElectricidadResidencial #Electricista #Chile #AprendeConmigo #CursoOnline #DIY #Construccion #RIC2021 #FYP #parati #electricidad #cursos</div>
+        <button class="copy-btn" onclick="copiar('txt-tt',this)">📋 COPIAR TEXTO TIKTOK</button>
+      </div>
+    </div>
+
+    <!-- YOUTUBE -->
+    <div class="platform-card yt" style="--delay:.35s">
+      <div class="card-head">
+        <span class="card-icon">🎥</span>
+        <span class="card-name">YouTube</span>
+        <span class="card-type">DESCRIPCIÓN + COMUNIDAD</span>
+      </div>
+      <div class="card-body">
+        <div class="text-box" id="txt-yt">⚡ CURSO COMPLETO DE ELECTRICIDAD RESIDENCIAL DESDE CERO
+
+En este curso aprenderás todo lo que necesitas para entender y trabajar con instalaciones eléctricas residenciales en Chile.
+
+📚 MÓDULOS DEL CURSO:
+✅ Módulo 1 — Principios de la Electricidad
+✅ Módulo 2 — Fórmulas y Cálculos (Ley de Ohm, Potencia, Energía)
+✅ Módulo 3 — Circuitos Eléctricos (Serie, Paralelo, Mixto)
+✅ Módulo 4 — Cables y Conductores (Calibres, NCh 4)
+✅ Módulo 5 — Protecciones Eléctricas (ITM, Diferencial, Tierra)
+✅ Módulo 6 — Normativa Eléctrica Chilena RIC 2021
+
+📦 QUÉ INCLUYE:
+→ Videos explicativos en español
+→ 8 Calculadoras interactivas
+→ 6 Manuales PDF descargables
+→ Certificado digital al finalizar
+→ Programa completo para descargar y tener de por vida
+
+✅ UNA VEZ REALIZADA TU COMPRA, recibes acceso inmediato a todo el programa para descargarlo y tenerlo para siempre.
+
+💰 PRECIO: $14.990 CLP — Pago único sin mensualidades
+
+🔗 INSCRÍBETE AQUÍ: https://electricidad-desde-cero.netlify.app/publicidad_voz.html
+
+---
+⏱ TIMESTAMPS:
+00:00 - Introducción
+02:30 - Módulo 1: Principios
+15:00 - Módulo 2: Fórmulas
+---
+#ElectricidadResidencial #CursoElectricidad #Chile #Electricista</div>
+        <button class="copy-btn" onclick="copiar('txt-yt',this)">📋 COPIAR TEXTO YOUTUBE</button>
+      </div>
+    </div>
+
+    <!-- LINKEDIN -->
+    <div class="platform-card li" style="--delay:.4s">
+      <div class="card-head">
+        <span class="card-icon">💼</span>
+        <span class="card-name">LinkedIn</span>
+        <span class="card-type">POST PROFESIONAL</span>
+      </div>
+      <div class="card-body">
+        <div class="text-box" id="txt-li">Me complace anunciar el lanzamiento de mi curso online: "Electricidad Residencial desde Cero" ⚡
+
+Después de años trabajando en instalaciones eléctricas, decidí crear un programa completo y accesible para todos los que quieren aprender esta disciplina desde los fundamentos.
+
+📋 EL CURSO INCLUYE:
+• 6 módulos estructurados con progresión lógica
+• Videos explicativos en español
+• 8 calculadoras técnicas interactivas
+• 6 manuales PDF descargables por módulo
+• Normativa eléctrica chilena vigente (RIC 2021)
+• Certificado digital al finalizar
+
+🎯 DIRIGIDO A:
+Técnicos en electricidad, estudiantes, trabajadores de la construcción, ingenieros y cualquier persona que quiera dominar los fundamentos de las instalaciones eléctricas residenciales.
+
+✅ Una vez realizada tu compra, recibes acceso inmediato a todo el programa completo para descargarlo y tenerlo de por vida. Sin mensualidades.
+
+💡 Precio de lanzamiento: $14.990 CLP (pago único)
+
+🔗 Más información e inscripción: https://electricidad-desde-cero.netlify.app/publicidad_voz.html
+
+#Electricidad #CursoOnline #Construccion #Chile #DesarrolloProfesional #Formacion #InstalacionesElectricas</div>
+        <button class="copy-btn" onclick="copiar('txt-li',this)">📋 COPIAR TEXTO LINKEDIN</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Hashtags -->
+  <div class="hashtags-section">
+    <div class="hs-title">⚡ BANCO DE HASHTAGS</div>
+    <div class="hashtags-box" id="txt-hash"><span class="hashtag">#ElectricidadResidencial</span> <span class="hashtag">#CursoElectricidad</span> <span class="hashtag">#Electricista</span> <span class="hashtag">#Chile</span> <span class="hashtag">#CursoOnline</span> <span class="hashtag">#AprendeOnline</span> <span class="hashtag">#InstalacionesElectricas</span> <span class="hashtag">#NCh4</span> <span class="hashtag">#RIC2021</span> <span class="hashtag">#ElectricidadChile</span> <span class="hashtag">#Electricidad</span> <span class="hashtag">#Construccion</span> <span class="hashtag">#OficiosChile</span> <span class="hashtag">#TecnicoElectricista</span> <span class="hashtag">#LeyDeOhm</span> <span class="hashtag">#CircuitosElectricos</span> <span class="hashtag">#ProteccionesElectricas</span> <span class="hashtag">#CableadoElectrico</span> <span class="hashtag">#TableroElectrico</span> <span class="hashtag">#HotmartChile</span> <span class="hashtag">#AprendeConmigo</span> <span class="hashtag">#DesdesCero</span> <span class="hashtag">#FYP</span> <span class="hashtag">#parati</span> <span class="hashtag">#DIY</span> <span class="hashtag">#Maestro</span> <span class="hashtag">#SEC</span> <span class="hashtag">#NormativaElectrica</span></div>
+    <button class="copy-btn" onclick="copiarHashtags()">📋 COPIAR TODOS LOS HASHTAGS</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Tips -->
+  <div class="tips-section">
+    <div class="ts-title">💡 TIPS PARA PUBLICAR</div>
+    <div class="tips-grid">
+      <div class="tip">
+        <div class="tip-head">📸 INSTAGRAM</div>
+        <div class="tip-body">Sube una foto del curso o un video de 30 seg mostrando el contenido. Usa el link de Hotmart en tu bio. Publica 3 veces/semana entre 19:00 y 21:00 hrs.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-head">💬 WHATSAPP</div>
+        <div class="tip-body">Envía a contactos cercanos primero y pídeles que reenvíen. Úsalo también en grupos de construcción y electricistas. Publica el estado con imagen del curso.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-head">📘 FACEBOOK</div>
+        <div class="tip-body">Busca grupos de "Electricistas Chile", "Construcción Chile" y publica ahí. Responde todos los comentarios para aumentar el alcance orgánico.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-head">🎵 TIKTOK</div>
+        <div class="tip-body">Graba un video de 30-60 segundos mostrando el contenido del curso. Empieza con una pregunta curiosa sobre electricidad para enganchar al espectador.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-head">🎥 YOUTUBE</div>
+        <div class="tip-body">Crea un video de presentación del curso de 3-5 minutos. Muestra el contenido, los PDFs y las calculadoras. Agrega el link en la descripción y fíjalo.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-head">🎯 MEJOR HORARIO</div>
+        <div class="tip-body">Chile: Lunes a Viernes entre 19:00-22:00 hrs. Sábados 10:00-14:00 hrs. Evita publicar los domingos por la mañana.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── VOICE ──
+const AD = [
+  "¡Atención! Curso de Electricidad Residencial desde Cero.",
+  "Aprende instalaciones eléctricas paso a paso con videos en español,",
+  "8 calculadoras interactivas, 6 módulos completos y normativa chilena RIC 2021.",
+  "Una vez que realizas tu compra, recibes acceso inmediato a todo el programa completo,",
+  "para que puedas descargarlo y tenerlo de por vida.",
+  "Solo 14 dólares con 99 centavos, pago único sin mensualidades.",
+  "Inscríbete ahora en Hotmart. El link está en esta página.",
+  "Tu conocimiento eléctrico empieza hoy. ¡No lo dejes pasar!"
+];
+
+let vmVoices=[],vmVoice=null,vmRate=0.95,vmPlaying=false,vmStopped=false,vmIdx=0,vmAnimId=null;
+const vmBars=[];
+
+// Init wave bars
+const vmWaveEl=document.getElementById('vmWave');
+for(let i=0;i<20;i++){
+  const b=document.createElement('div');b.className='vm-bar';
+  vmWaveEl.appendChild(b);vmBars.push(b);
+}
+
+function vmInitVoices(){
+  if(!window.speechSynthesis)return;
+  const all=window.speechSynthesis.getVoices();
+  vmVoices=all.filter(v=>v.lang.startsWith('es'));
+  if(!vmVoices.length)vmVoices=all;
+  vmVoice=vmVoices.find(v=>v.lang==='es-CL')||vmVoices.find(v=>v.lang.startsWith('es'))||vmVoices[0]||null;
+}
+window.speechSynthesis&&(window.speechSynthesis.onvoiceschanged=vmInitVoices);
+window.addEventListener('load',()=>setTimeout(vmInitVoices,400));
+
+function vmAnimate(on){
+  clearInterval(vmAnimId);
+  if(!on){vmBars.forEach(b=>b.style.height='4px');return;}
+  vmAnimId=setInterval(()=>vmBars.forEach(b=>{b.style.height=(Math.random()*26+4)+'px';}),80);
+}
+
+function vmSpeak(idx){
+  if(vmStopped||idx>=AD.length){vmFinish();return;}
+  vmIdx=idx;
+  const txt=document.getElementById('vmText');
+  txt.textContent='"'+AD[idx]+'"';txt.classList.add('on');
+  const u=new SpeechSynthesisUtterance(AD[idx]);
+  if(vmVoice)u.voice=vmVoice;
+  u.lang=vmVoice?vmVoice.lang:'es-CL';
+  u.rate=vmRate;u.pitch=1;u.volume=1;
+  u.onend=()=>{if(!vmStopped)vmSpeak(idx+1);};
+  u.onerror=()=>{if(!vmStopped)vmSpeak(idx+1);};
+  window.speechSynthesis.speak(u);
+}
+
+function vmToggle(){
+  if(vmPlaying){
+    if(window.speechSynthesis.paused){window.speechSynthesis.resume();document.getElementById('vmPlayBtn').textContent='⏸ PAUSAR';vmAnimate(true);}
+    else{window.speechSynthesis.pause();document.getElementById('vmPlayBtn').textContent='▶ CONTINUAR';vmAnimate(false);}
+  } else {vmStart();}
+}
+
+function vmStart(){
+  if(!window.speechSynthesis){alert('Usa Chrome o Edge para la voz.');return;}
+  window.speechSynthesis.cancel();
+  vmStopped=false;vmPlaying=true;vmIdx=0;
+  document.getElementById('vmPlayBtn').textContent='⏸ PAUSAR';
+  vmAnimate(true);vmSpeak(0);
+}
+
+function vmStop(){
+  vmStopped=true;vmPlaying=false;
+  window.speechSynthesis.cancel();vmAnimate(false);
+  document.getElementById('vmPlayBtn').textContent='▶ PLAY';
+  const txt=document.getElementById('vmText');
+  txt.textContent='Detenido. Presiona PLAY para volver a escuchar.';
+  txt.classList.remove('on');
+}
+
+function vmReplay(){vmStopped=false;window.speechSynthesis.cancel();setTimeout(vmStart,200);}
+
+function vmFinish(){
+  vmPlaying=false;vmAnimate(false);
+  document.getElementById('vmPlayBtn').textContent='▶ PLAY';
+  const txt=document.getElementById('vmText');
+  txt.textContent='✅ Narración completada. ¡Comparte el link!';
+  txt.classList.remove('on');
+}
+
+function vmChangeSpeed(v){
+  vmRate=parseFloat(v);
+  document.getElementById('vmSpeedVal').textContent=parseFloat(v).toFixed(2)+'×';
+}
+
+// ── COUNTDOWN TIMER ──
+(function() {
+  let secs = 15 * 60;
+  const el = document.getElementById('kit-timer');
+  if (!el) return;
+  const iv = setInterval(() => {
+    if (secs <= 0) { clearInterval(iv); if(el) el.textContent='¡EXPIRADO!'; return; }
+    secs--;
+    const m = String(Math.floor(secs/60)).padStart(2,'0');
+    const s = String(secs%60).padStart(2,'0');
+    if(el) el.textContent = m+':'+s;
+  }, 1000);
+})();
+
+// ── COPY ──
+function copiar(id,btn){
+  const el=document.getElementById(id);
+  const text=el.innerText||el.textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='✅ ¡COPIADO!';btn.classList.add('ok');
+    setTimeout(()=>{btn.textContent=btn.textContent.replace('✅ ¡COPIADO!','📋 COPIAR TEXTO '+id.replace('txt-','').toUpperCase());btn.classList.remove('ok');},2000);
+  });
+}
+
+function copiarHashtags(){
+  const text='#ElectricidadResidencial #CursoElectricidad #Electricista #Chile #CursoOnline #AprendeOnline #InstalacionesElectricas #NCh4 #RIC2021 #ElectricidadChile #Electricidad #Construccion #OficiosChile #TecnicoElectricista #LeyDeOhm #CircuitosElectricos #ProteccionesElectricas #CableadoElectrico #TableroElectrico #HotmartChile #AprendeConmigo #DesdesCero #FYP #parati #DIY #Maestro #SEC #NormativaElectrica';
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=event.target;btn.textContent='✅ ¡COPIADO!';btn.classList.add('ok');
+    setTimeout(()=>{btn.textContent='📋 COPIAR TODOS LOS HASHTAGS';btn.classList.remove('ok');},2000);
+  });
+}
+</script>
+</body>
+</html>

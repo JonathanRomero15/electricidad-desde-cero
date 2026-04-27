@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electricidad Residencial desde Cero — Con Voz</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --naranja:#f5a623; --naranja2:#ff6a00; --oscuro:#05080f;
+    --panel:#0d1420; --panel2:#111e30; --texto:#ddeeff; --gris:#3a5070;
+    --verde:#00d97e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+
+  body {
+    background:var(--oscuro);
+    font-family:'Barlow Condensed',sans-serif;
+    color:var(--texto);
+    overflow-x:hidden;
+    cursor:none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    position:fixed;width:18px;height:18px;border:2px solid var(--naranja);
+    border-radius:50%;pointer-events:none;z-index:9999;
+    transform:translate(-50%,-50%);transition:transform .1s,width .2s,height .2s,opacity .2s;
+    mix-blend-mode:difference;
+  }
+  .cursor.big{width:40px;height:40px;opacity:.5;}
+
+  /* ── BG ── */
+  .bg-fixed {
+    position:fixed;inset:0;z-index:0;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(245,166,35,.1) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 90% 90%, rgba(255,106,0,.06) 0%, transparent 50%),
+      var(--oscuro);
+  }
+  .grid-bg {
+    position:fixed;inset:0;z-index:0;
+    background-image:
+      linear-gradient(rgba(245,166,35,.03) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(245,166,35,.03) 1px,transparent 1px);
+    background-size:50px 50px;
+    animation:gridScroll 25s linear infinite;
+  }
+  @keyframes gridScroll{to{background-position:50px 50px;}}
+
+  /* Particles */
+  .particles{position:fixed;inset:0;z-index:0;pointer-events:none;}
+  .p{position:absolute;width:2px;height:2px;background:var(--naranja);border-radius:50%;animation:floatP linear infinite;opacity:0;}
+  @keyframes floatP{0%{opacity:0;transform:translateY(100vh)}10%{opacity:.6}90%{opacity:.3}100%{opacity:0;transform:translateY(-20px)}}
+
+  /* ── LAYOUT ── */
+  .wrap{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:50px 24px 80px;}
+
+  /* ── VOICE PLAYER ── */
+  .voice-hero {
+    position:relative;
+    background:linear-gradient(145deg,var(--panel),rgba(245,166,35,.05));
+    border:1px solid rgba(245,166,35,.2);
+    border-radius:24px;
+    padding:36px;
+    margin-bottom:36px;
+    overflow:hidden;
+    animation:fadeUp .8s ease both;
+  }
+  .voice-hero::before {
+    content:'';position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,transparent,var(--naranja),var(--naranja2),transparent);
+    animation:shimmer 3s ease infinite;
+  }
+  @keyframes shimmer{0%,100%{opacity:.5}50%{opacity:1}}
+
+  .vh-top{display:flex;align-items:center;gap:14px;margin-bottom:24px;}
+  .vh-badge{
+    background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);
+    border-radius:30px;padding:5px 14px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--naranja);letter-spacing:2px;
+  }
+  .vh-live{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.4);}
+  .live-dot{width:7px;height:7px;background:#ff3b3b;border-radius:50%;animation:livePulse 1.2s ease infinite;}
+  @keyframes livePulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(255,59,59,.4)}70%{box-shadow:0 0 0 8px rgba(255,59,59,0)}}
+
+  /* Waveform visual */
+  .waveform {
+    display:flex;align-items:center;justify-content:center;
+    gap:3px;height:60px;margin-bottom:24px;
+  }
+  .wave-bar {
+    width:4px;border-radius:4px;
+    background:linear-gradient(180deg,var(--naranja),var(--naranja2));
+    transition:height .1s;
+  }
+
+  /* Voice text display */
+  .voice-text-display {
+    background:rgba(0,0,0,.3);border-radius:12px;
+    padding:14px 18px;margin-bottom:20px;
+    font-family:'JetBrains Mono',monospace;font-size:13px;
+    color:rgba(255,255,255,.6);line-height:1.6;
+    min-height:52px;border-left:3px solid var(--naranja);
+    transition:all .3s;
+  }
+  .voice-text-display.speaking{color:var(--texto);border-left-color:var(--verde);}
+
+  /* Controls */
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .btn-play {
+    display:flex;align-items:center;gap:10px;
+    background:linear-gradient(135deg,var(--naranja),var(--naranja2));
+    border:none;border-radius:12px;
+    padding:14px 28px;
+    font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;
+    color:#000;cursor:pointer;transition:all .2s;
+    box-shadow:0 6px 30px rgba(245,166,35,.3);
+  }
+  .btn-play:hover{transform:scale(1.04);box-shadow:0 8px 40px rgba(245,166,35,.5);}
+  .btn-play:active{transform:scale(.98);}
+
+  .btn-stop,.btn-replay {
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+    border-radius:10px;padding:12px 18px;font-size:18px;
+    cursor:pointer;transition:all .2s;color:var(--texto);
+  }
+  .btn-stop:hover,.btn-replay:hover{background:rgba(255,255,255,.12);}
+
+  .speed-ctrl{display:flex;align-items:center;gap:8px;margin-left:auto;}
+  .speed-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gris);}
+  .speed-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--naranja);min-width:32px;}
+  input[type=range]{accent-color:var(--naranja);width:80px;cursor:pointer;}
+
+  /* Voice selector */
+  .voice-sel-wrap{margin-top:14px;display:flex;align-items:center;gap:10px;}
+  .voice-sel-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gris);}
+  select.voice-select{
+    background:var(--panel2);border:1px solid rgba(245,166,35,.15);
+    color:var(--texto);border-radius:8px;padding:6px 10px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;flex:1;
+  }
+
+  /* Progress bar */
+  .progress-wrap{margin-top:16px;}
+  .progress-bar-bg{height:3px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;}
+  .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--naranja),var(--naranja2));width:0%;transition:width .3s;border-radius:3px;}
+  .progress-labels{display:flex;justify-content:space-between;margin-top:6px;}
+  .prog-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gris);}
+
+  /* ── HEADER ── */
+  .hero-header{text-align:center;margin-bottom:32px;animation:fadeUp .7s ease .1s both;}
+  .pre-title{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--naranja);
+    letter-spacing:3px;margin-bottom:10px;opacity:.8;
+  }
+  h1.main-title{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:clamp(56px,12vw,100px);
+    line-height:.9;letter-spacing:1px;color:#fff;
+    text-shadow:0 0 80px rgba(245,166,35,.15);
+  }
+  h1.main-title .orange{
+    background:linear-gradient(135deg,var(--naranja),var(--naranja2));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .sub-title{
+    font-size:clamp(16px,3vw,22px);color:rgba(221,238,255,.5);
+    font-weight:400;margin-top:12px;line-height:1.5;
+  }
+
+  /* ── STATS ── */
+  .stats{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+    margin-bottom:28px;animation:fadeUp .7s ease .2s both;
+  }
+  @media(max-width:500px){.stats{grid-template-columns:repeat(2,1fr);}}
+  .stat{
+    background:rgba(255,255,255,.02);border:1px solid rgba(245,166,35,.08);
+    border-radius:14px;padding:16px 10px;text-align:center;
+    transition:all .25s;
+  }
+  .stat:hover{background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.2);transform:translateY(-3px);}
+  .stat-n{font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--naranja);line-height:1;}
+  .stat-l{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gris);margin-top:3px;}
+
+  /* ── MODULES ── */
+  .modules{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:10px;
+    margin-bottom:28px;animation:fadeUp .7s ease .3s both;
+  }
+  @media(max-width:500px){.modules{grid-template-columns:1fr;}}
+  .mod{
+    background:var(--panel);border:1px solid rgba(245,166,35,.08);
+    border-radius:14px;padding:16px 18px;
+    display:flex;align-items:center;gap:14px;
+    transition:all .25s;cursor:default;
+  }
+  .mod:hover{border-color:rgba(245,166,35,.25);background:rgba(245,166,35,.04);transform:translateX(4px);}
+  .mod-num-badge{
+    font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--naranja);
+    min-width:36px;line-height:1;opacity:.7;
+  }
+  .mod-info{}
+  .mod-title-text{font-size:14px;font-weight:700;color:var(--texto);}
+  .mod-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gris);margin-top:2px;}
+
+  /* ── INCLUDES ── */
+  .includes{
+    display:flex;flex-wrap:wrap;gap:8px;margin-bottom:32px;
+    animation:fadeUp .7s ease .35s both;
+  }
+  .inc{
+    display:flex;align-items:center;gap:6px;
+    background:rgba(0,217,126,.06);border:1px solid rgba(0,217,126,.15);
+    border-radius:30px;padding:6px 14px;font-size:12px;color:rgba(221,238,255,.7);
+  }
+  .inc .ck{color:var(--verde);}
+
+  /* ── CTA ── */
+  .cta{text-align:center;animation:fadeUp .7s ease .4s both;}
+  .cta-price{
+    font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gris);
+    letter-spacing:2px;margin-bottom:8px;
+  }
+  .cta-amount{
+    font-family:'Bebas Neue',sans-serif;font-size:60px;color:var(--naranja);
+    line-height:1;margin-bottom:4px;
+  }
+  .cta-currency{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gris);margin-bottom:20px;}
+  .btn-main{
+    display:inline-flex;align-items:center;gap:12px;
+    background:linear-gradient(135deg,var(--naranja),var(--naranja2));
+    color:#000;font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;
+    padding:18px 52px;border-radius:16px;text-decoration:none;
+    transition:all .25s;box-shadow:0 8px 40px rgba(245,166,35,.35);
+    border:none;cursor:pointer;margin-bottom:14px;
+  }
+  .btn-main:hover{transform:translateY(-4px);box-shadow:0 14px 60px rgba(245,166,35,.55);}
+  .btn-secondary{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);
+    color:var(--texto);font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;
+    padding:12px 30px;border-radius:10px;text-decoration:none;
+    transition:all .2s;cursor:pointer;
+  }
+  .btn-secondary:hover{background:rgba(255,255,255,.1);}
+  .trust{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-top:16px;}
+  .t-item{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gris);display:flex;align-items:center;gap:5px;}
+
+  /* Divider */
+  .divider{height:1px;background:linear-gradient(90deg,transparent,rgba(245,166,35,.15),transparent);margin:28px 0;}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="bg-fixed"></div>
+<div class="grid-bg"></div>
+<div class="particles" id="particles"></div>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="hero-header">
+    <div class="pre-title">⚡ NUEVO CURSO ONLINE — DISPONIBLE MUNDIAL</div>
+    <h1 class="main-title">
+      ELECTRICIDAD<br>
+      <span class="orange">RESIDENCIAL</span><br>
+      DESDE CERO
+    </h1>
+    <p class="sub-title">Aprende instalaciones eléctricas desde cero con videos en español,<br>calculadoras y normativa eléctrica internacional vigente.</p>
+  </div>
+
+  <!-- Voice Player -->
+  <div class="voice-hero" id="voiceHero">
+    <div class="vh-top">
+      <div class="vh-badge">🔊 NARRACIÓN AUTOMÁTICA</div>
+      <div class="vh-live"><span class="live-dot"></span> PUBLICIDAD CON VOZ</div>
+    </div>
+
+    <!-- Waveform -->
+    <div class="waveform" id="waveform"></div>
+
+    <!-- Text display -->
+    <div class="voice-text-display" id="voiceDisplay">
+      Presiona PLAY para escuchar la publicidad completa narrada en español...
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-wrap">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <div class="progress-labels">
+        <span class="prog-lbl" id="progCurrent">0:00</span>
+        <span class="prog-lbl" id="progTotal">—</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls" style="margin-top:16px;">
+      <button class="btn-play" id="btnPlay" onclick="togglePlay()">
+        <span id="playIcon">▶</span> <span id="playLabel">ESCUCHAR PUBLICIDAD</span>
+      </button>
+      <button class="btn-stop" onclick="stopVoice()" title="Detener">⏹</button>
+      <button class="btn-replay" onclick="replayVoice()" title="Reiniciar">↺</button>
+      <div class="speed-ctrl">
+        <span class="speed-label">VEL</span>
+        <input type="range" id="speedSlider" min="0.6" max="1.8" step="0.1" value="0.95" oninput="changeSpeed(this.value)">
+        <span class="speed-val" id="speedVal">0.95×</span>
+      </div>
+    </div>
+
+    <!-- Voice selector -->
+    <div class="voice-sel-wrap">
+      <span class="voice-sel-label">VOZ:</span>
+      <select class="voice-select" id="voiceSelect" onchange="changeVoice(this.value)">
+        <option>Cargando voces...</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="stat-n">6</div><div class="stat-l">MÓDULOS</div></div>
+    <div class="stat"><div class="stat-n">12</div><div class="stat-l">VIDEOS</div></div>
+    <div class="stat"><div class="stat-n">8</div><div class="stat-l">CALCULADORAS</div></div>
+    <div class="stat"><div class="stat-n">∞</div><div class="stat-l">ACCESO</div></div>
+  </div>
+
+  <!-- Modules -->
+  <div class="modules">
+    <div class="mod"><div class="mod-num-badge">01</div><div class="mod-info"><div class="mod-title-text">Principios de la Electricidad</div><div class="mod-sub">Átomo, carga, tensión, corriente, resistencia</div></div></div>
+    <div class="mod"><div class="mod-num-badge">02</div><div class="mod-info"><div class="mod-title-text">Fórmulas y Cálculos</div><div class="mod-sub">Ley de Ohm, potencia, energía, costo</div></div></div>
+    <div class="mod"><div class="mod-num-badge">03</div><div class="mod-info"><div class="mod-title-text">Circuitos Eléctricos</div><div class="mod-sub">Serie, paralelo y mixto</div></div></div>
+    <div class="mod"><div class="mod-num-badge">04</div><div class="mod-info"><div class="mod-title-text">Cables y Conductores</div><div class="mod-sub">Calibres, tablas de corriente, caída de tensión</div></div></div>
+    <div class="mod"><div class="mod-num-badge">05</div><div class="mod-info"><div class="mod-title-text">Protecciones Eléctricas</div><div class="mod-sub">ITM, diferencial, puesta a tierra</div></div></div>
+    <div class="mod"><div class="mod-num-badge">06</div><div class="mod-info"><div class="mod-title-text">Normativa Eléctrica</div><div class="mod-sub">Reglamento eléctrico residencial vigente</div></div></div>
+  </div>
+
+  <!-- Includes -->
+  <div class="includes">
+    <div class="inc"><span class="ck">✓</span> Videos en español</div>
+    <div class="inc"><span class="ck">✓</span> 6 PDFs descargables</div>
+    <div class="inc"><span class="ck">✓</span> Calculadoras interactivas</div>
+    <div class="inc"><span class="ck">✓</span> Certificado digital</div>
+    <div class="inc"><span class="ck">✓</span> Acceso de por vida</div>
+    <div class="inc"><span class="ck">✓</span> Normativa eléctrica internacional</div>
+    <div class="inc"><span class="ck">✓</span> Sistema de voz incluido</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <div class="cta-price">PRECIO DE LANZAMIENTO</div>
+    <div class="cta-amount">14,99</div>
+    <div class="cta-currency">USD — PAGO ÚNICO SIN MENSUALIDADES</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+      <a href="https://pay.hotmart.com/O105564490W" target="_blank" class="btn-main">
+        🔒 INSCRIBIRME EN HOTMART
+      </a>
+      <div style="background:rgba(0,217,126,.06);border:1px solid rgba(0,217,126,.2);border-radius:14px;padding:16px 24px;max-width:480px;text-align:center;margin-top:4px;">
+        <div style="font-size:13px;color:rgba(0,217,126,.9);font-family:'JetBrains Mono',monospace;margin-bottom:6px;">✅ UNA VEZ REALIZADA TU COMPRA</div>
+        <div style="font-size:15px;color:rgba(221,238,255,.8);font-weight:700;line-height:1.5;">
+          Recibirás acceso inmediato a toda la información y programa completo del curso para que puedas descargarlo y tenerlo de por vida.
+        </div>
+      </div>
+    </div>
+    <div class="trust">
+      <div class="t-item">🔒 Pago 100% seguro</div>
+      <div class="t-item">↩ Garantía 15 días</div>
+      <div class="t-item">💳 Tarjeta / Débito / Transferencia</div>
+      <div class="t-item">🌎 Disponible en todo el mundo</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CURSOR ──
+const cursor = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top = e.clientY + 'px';
+});
+document.querySelectorAll('a,button,select,input').forEach(el => {
+  el.addEventListener('mouseenter', () => cursor.classList.add('big'));
+  el.addEventListener('mouseleave', () => cursor.classList.remove('big'));
+});
+
+// ── PARTICLES ──
+const pContainer = document.getElementById('particles');
+for (let i = 0; i < 25; i++) {
+  const p = document.createElement('div');
+  p.className = 'p';
+  p.style.cssText = `
+    left:${Math.random()*100}%;
+    animation-duration:${6+Math.random()*10}s;
+    animation-delay:${Math.random()*10}s;
+    width:${Math.random()>0.7?3:2}px;height:${Math.random()>0.7?3:2}px;
+    opacity:${0.2+Math.random()*0.4};
+  `;
+  pContainer.appendChild(p);
+}
+
+// ── WAVEFORM ──
+const waveContainer = document.getElementById('waveform');
+const bars = [];
+for (let i = 0; i < 48; i++) {
+  const bar = document.createElement('div');
+  bar.className = 'wave-bar';
+  bar.style.height = '4px';
+  waveContainer.appendChild(bar);
+  bars.push(bar);
+}
+let waveAnim = null;
+function animateWave(active) {
+  if (waveAnim) clearInterval(waveAnim);
+  if (!active) {
+    bars.forEach(b => b.style.height = '4px');
+    return;
+  }
+  waveAnim = setInterval(() => {
+    bars.forEach((b, i) => {
+      const h = active ? Math.random() * 50 + 4 : 4;
+      b.style.height = h + 'px';
+      b.style.opacity = active ? (0.5 + Math.random() * 0.5) : '0.3';
+    });
+  }, 80);
+}
+
+// ── VOICE SYSTEM ──
+const AD_SCRIPT = [
+  "¡Bienvenido al curso de Electricidad Residencial desde Cero!",
+  "Si alguna vez quisiste entender cómo funciona la instalación eléctrica de tu casa... este curso es para ti.",
+  "Aprenderás desde los principios básicos de la electricidad: tensión, corriente y resistencia,",
+  "hasta cómo calcular el cable correcto para cada circuito, seleccionar protecciones eléctricas,",
+  "y aplicar la normativa eléctrica residencial internacional vigente.",
+  "El curso incluye 6 módulos completos con videos en español,",
+  "8 calculadoras interactivas, 6 manuales PDF descargables,",
+  "certificado digital al finalizar, y acceso de por vida desde cualquier dispositivo.",
+  "Todo esto por solo 14 dólares con 99 centavos. Un único pago, sin mensualidades.",
+  "Ingresa ahora en Hotmart y empieza hoy mismo.",
+  "Una vez realizada tu compra, recibirás acceso inmediato a toda la información y programa completo del curso, para que puedas descargarlo y tenerlo de por vida.",
+  "Tu conocimiento eléctrico empieza aquí. ¡Inscríbete ahora!"
+];
+
+let voices = [];
+let selectedVoice = null;
+let speechRate = 0.95;
+let isPlaying = false;
+let isStopped = false;
+let currentChunkIdx = 0;
+let startTime = null;
+let totalDuration = AD_SCRIPT.join(' ').length / 14;
+
+function initVoices() {
+  if (!window.speechSynthesis) return;
+  const all = window.speechSynthesis.getVoices();
+  voices = all.filter(v => v.lang.startsWith('es'));
+  if (!voices.length) voices = all;
+  selectedVoice = voices.find(v => v.lang === 'es-CL') ||
+                  voices.find(v => v.lang === 'es-419') ||
+                  voices.find(v => v.lang.startsWith('es')) ||
+                  voices[0] || null;
+  populateVoiceSelect();
+}
+
+function populateVoiceSelect() {
+  const sel = document.getElementById('voiceSelect');
+  if (!sel || !voices.length) return;
+  sel.innerHTML = '';
+  voices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = v.name + ' (' + v.lang + ')';
+    if (v === selectedVoice) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function changeVoice(idx) {
+  if (voices[idx]) selectedVoice = voices[idx];
+}
+
+function changeSpeed(val) {
+  speechRate = parseFloat(val);
+  document.getElementById('speedVal').textContent = parseFloat(val).toFixed(2) + '×';
+}
+
+window.speechSynthesis && (window.speechSynthesis.onvoiceschanged = initVoices);
+window.addEventListener('load', () => setTimeout(initVoices, 400));
+
+function speakChunk(idx) {
+  if (isStopped || idx >= AD_SCRIPT.length) {
+    finishPlaying();
+    return;
+  }
+  currentChunkIdx = idx;
+  const text = AD_SCRIPT[idx];
+
+  // Update display
+  const display = document.getElementById('voiceDisplay');
+  display.textContent = '"' + text + '"';
+  display.classList.add('speaking');
+
+  // Progress
+  const pct = (idx / AD_SCRIPT.length) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  const utt = new SpeechSynthesisUtterance(text);
+  if (selectedVoice) utt.voice = selectedVoice;
+  utt.lang = selectedVoice ? selectedVoice.lang : 'es-CL';
+  utt.rate = speechRate;
+  utt.pitch = 1.0;
+  utt.volume = 1.0;
+  utt.onend = () => { if (!isStopped) speakChunk(idx + 1); };
+  utt.onerror = () => { if (!isStopped) speakChunk(idx + 1); };
+  window.speechSynthesis.speak(utt);
+}
+
+function togglePlay() {
+  if (isPlaying) {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      document.getElementById('playIcon').textContent = '⏸';
+      document.getElementById('playLabel').textContent = 'PAUSAR';
+      animateWave(true);
+    } else {
+      window.speechSynthesis.pause();
+      document.getElementById('playIcon').textContent = '▶';
+      document.getElementById('playLabel').textContent = 'CONTINUAR';
+      animateWave(false);
+    }
+  } else {
+    startPlaying();
+  }
+}
+
+function startPlaying() {
+  if (!window.speechSynthesis) {
+    alert('Tu navegador no soporta síntesis de voz. Usa Chrome o Edge.');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  isStopped = false;
+  isPlaying = true;
+  currentChunkIdx = 0;
+  startTime = Date.now();
+
+  document.getElementById('playIcon').textContent = '⏸';
+  document.getElementById('playLabel').textContent = 'PAUSAR';
+  document.getElementById('progressFill').style.width = '0%';
+  animateWave(true);
+  speakChunk(0);
+}
+
+function stopVoice() {
+  isStopped = true;
+  isPlaying = false;
+  window.speechSynthesis.cancel();
+  finishPlaying();
+  document.getElementById('voiceDisplay').textContent = 'Detenido. Presiona PLAY para volver a escuchar.';
+  document.getElementById('voiceDisplay').classList.remove('speaking');
+  document.getElementById('progressFill').style.width = '0%';
+}
+
+function replayVoice() {
+  isStopped = false;
+  window.speechSynthesis.cancel();
+  setTimeout(startPlaying, 200);
+}
+
+function finishPlaying() {
+  isPlaying = false;
+  animateWave(false);
+  document.getElementById('playIcon').textContent = '▶';
+  document.getElementById('playLabel').textContent = 'ESCUCHAR PUBLICIDAD';
+  if (!isStopped) {
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('voiceDisplay').textContent = '✅ Publicidad completada. ¡Inscríbete ahora!';
+    document.getElementById('voiceDisplay').classList.remove('speaking');
+  }
+}
+</script>
+</body>
+</html>
