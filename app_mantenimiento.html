@@ -1,0 +1,1819 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#060d1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MantePro">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Plan de Mantenimiento Industrial 2026">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>MantePro 2026</title>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+
+  // ══════════════════════════════════════════════════
+  // 🔥 CONFIGURACIÓN FIREBASE — REEMPLAZA ESTOS VALORES
+  // ══════════════════════════════════════════════════
+  const firebaseConfig = {
+    apiKey: "TU_API_KEY",
+    authDomain: "TU_PROJECT.firebaseapp.com",
+    projectId: "TU_PROJECT_ID",
+    storageBucket: "TU_PROJECT.appspot.com",
+    messagingSenderId: "TU_SENDER_ID",
+    appId: "TU_APP_ID"
+  };
+  // ══════════════════════════════════════════════════
+
+  let app, db, storage;
+  let FIREBASE_OK = false;
+
+  try {
+    // Check if config is filled
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "TU_API_KEY") {
+      console.warn("Firebase no configurado — usando modo local");
+    } else {
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      storage = getStorage(app);
+      FIREBASE_OK = true;
+    }
+  } catch(e) {
+    console.warn("Firebase error:", e);
+  }
+
+  // Expose to global scope
+  window._FB = { db, storage, FIREBASE_OK,
+    collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
+    onSnapshot, serverTimestamp, query, orderBy, ref,
+    uploadBytes, getDownloadURL, deleteObject
+  };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<!-- xlsx + jspdf -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:#060d1a; --panel:#0b1527; --panel2:#0f1e35; --border:#1a2d4a;
+  --accent:#00c8ff; --green:#00e676; --yellow:#ffc107; --red:#ff4560;
+  --orange:#ff6d00; --purple:#ab47ff;
+  --text:#cde0f8; --muted:#4a6a90; --white:#e8f4ff;
+  --font:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --nav-h: 60px; --bar-h: 64px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);
+     display:flex;flex-direction:column;
+     padding-top:var(--safe-top);padding-bottom:var(--safe-bottom);}
+
+/* ── TOP BAR ── */
+.topbar{
+  height:var(--nav-h);background:rgba(6,13,26,.97);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:12px;
+  flex-shrink:0;z-index:50;position:relative;
+  backdrop-filter:blur(12px);
+}
+.topbar-logo{width:34px;height:34px;background:linear-gradient(135deg,#00c8ff,#0055cc);
+  border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.topbar-title{font-weight:700;font-size:15px;color:var(--white);letter-spacing:.5px;}
+.topbar-sub{font-size:10px;color:var(--muted);font-family:var(--mono);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.sync-dot.online{background:var(--green);box-shadow:0 0 6px var(--green);}
+.sync-dot.syncing{background:var(--yellow);animation:pulse-dot 1s infinite;}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-label{font-size:10px;font-family:var(--mono);color:var(--muted);}
+
+/* ── MAIN SCROLL AREA ── */
+.main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  padding-bottom:calc(var(--bar-h) + 12px);}
+
+/* ── PAGE ── */
+.page{display:none;padding:16px;animation:fadeUp .22s ease;}
+.page.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── BOTTOM NAV ── */
+.bottomnav{
+  height:var(--bar-h);background:rgba(6,13,26,.97);
+  border-top:1px solid var(--border);
+  display:flex;align-items:stretch;
+  flex-shrink:0;backdrop-filter:blur(12px);
+}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;border:none;background:none;
+  color:var(--muted);font-family:var(--font);font-size:10px;font-weight:500;
+  cursor:pointer;transition:color .2s;padding:6px 4px;letter-spacing:.3px;}
+.bnav-item .icon{font-size:22px;line-height:1;transition:transform .2s;}
+.bnav-item.active{color:var(--accent);}
+.bnav-item.active .icon{transform:scale(1.15);}
+.bnav-badge{position:relative;}
+.bnav-badge::after{content:attr(data-count);position:absolute;top:-4px;right:-8px;
+  background:var(--red);color:#fff;border-radius:10px;font-size:9px;
+  font-weight:700;padding:1px 5px;min-width:16px;text-align:center;display:none;}
+.bnav-badge[data-count]:not([data-count="0"])::after{display:block;}
+
+/* ── SECTION HEADER ── */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;gap:10px;}
+.sec-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--accent);font-family:var(--mono);}
+.sec-count{font-size:11px;color:var(--muted);font-family:var(--mono);}
+
+/* ── SEARCH BAR ── */
+.search-wrap{position:relative;margin-bottom:14px;}
+.search-wrap input{width:100%;background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-family:var(--mono);font-size:13px;
+  padding:11px 14px 11px 40px;outline:none;transition:border-color .2s;}
+.search-wrap input:focus{border-color:var(--accent);}
+.search-wrap .si{position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  font-size:16px;pointer-events:none;}
+.filter-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;
+  scrollbar-width:none;margin-bottom:14px;}
+.filter-row::-webkit-scrollbar{display:none;}
+.fchip{display:flex;align-items:center;padding:6px 12px;border-radius:20px;
+  border:1px solid var(--border);background:var(--panel2);color:var(--muted);
+  font-size:11px;font-family:var(--mono);white-space:nowrap;cursor:pointer;
+  transition:all .18s;flex-shrink:0;}
+.fchip.active{background:rgba(0,200,255,.15);border-color:var(--accent);color:var(--accent);}
+
+/* ── KPI CARDS ── */
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.kpi-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;position:relative;overflow:hidden;}
+.kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;}
+.kpi-c1::after{background:var(--accent);}
+.kpi-c2::after{background:var(--yellow);}
+.kpi-c3::after{background:var(--green);}
+.kpi-c4::after{background:var(--red);}
+.kpi-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--muted);font-family:var(--mono);margin-bottom:5px;}
+.kpi-val{font-size:32px;font-weight:700;font-family:var(--mono);line-height:1;}
+.kpi-c1 .kpi-val{color:var(--accent);}
+.kpi-c2 .kpi-val{color:var(--yellow);}
+.kpi-c3 .kpi-val{color:var(--green);}
+.kpi-c4 .kpi-val{color:var(--red);}
+.kpi-sub{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:3px;}
+
+/* ── OT CARD ── */
+.ot-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .18s;
+  position:relative;overflow:hidden;}
+.ot-card:active{opacity:.85;transform:scale(.99);}
+.ot-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+.ot-card.st-abierta::before{background:var(--yellow);}
+.ot-card.st-progreso::before{background:var(--accent);}
+.ot-card.st-cerrada::before{background:var(--green);}
+.ot-card.st-cancelada::before{background:var(--red);}
+.ot-card-top{display:flex;align-items:flex-start;justify-content:space-between;
+  gap:8px;margin-bottom:8px;}
+.ot-num{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600;}
+.ot-equipo{font-size:14px;font-weight:600;color:var(--white);margin-top:2px;
+  line-height:1.3;}
+.ot-act{font-size:12px;color:var(--text);margin-top:5px;line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.ot-card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center;}
+.meta-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;
+  border-radius:5px;font-size:10px;font-family:var(--mono);font-weight:600;}
+.mc-proceso{background:rgba(171,71,255,.1);color:var(--purple);border:1px solid rgba(171,71,255,.2);}
+.mc-tipo-P{background:rgba(0,200,255,.1);color:var(--accent);border:1px solid rgba(0,200,255,.2);}
+.mc-tipo-C{background:rgba(255,69,96,.1);color:var(--red);border:1px solid rgba(255,69,96,.2);}
+.mc-tipo-D{background:rgba(171,71,255,.1);color:var(--purple);}
+.mc-fecha{background:rgba(255,255,255,.05);color:var(--muted);}
+.mc-foto{background:rgba(0,200,255,.08);color:var(--accent);}
+.badge-st{display:inline-flex;align-items:center;padding:3px 9px;border-radius:5px;
+  font-size:10px;font-family:var(--mono);font-weight:700;white-space:nowrap;}
+.bs-abierta{background:rgba(255,193,7,.15);color:var(--yellow);border:1px solid rgba(255,193,7,.3);}
+.bs-progreso{background:rgba(0,200,255,.15);color:var(--accent);border:1px solid rgba(0,200,255,.3);}
+.bs-cerrada{background:rgba(0,230,118,.15);color:var(--green);border:1px solid rgba(0,230,118,.3);}
+.bs-cancelada{background:rgba(255,69,96,.15);color:var(--red);border:1px solid rgba(255,69,96,.3);}
+.prio-chip::before{content:'';width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;}
+.pr-alta::before{background:var(--red);}
+.pr-media::before{background:var(--yellow);}
+.pr-baja::before{background:var(--green);}
+
+/* ── BOTTOM SHEET (Detail / Form) ── */
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
+  display:none;backdrop-filter:blur(3px);}
+.sheet-overlay.open{display:block;}
+.sheet{position:fixed;bottom:0;left:0;right:0;background:var(--panel);
+  border-radius:20px 20px 0 0;z-index:201;
+  max-height:92vh;display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);}
+.sheet.open{transform:translateY(0);}
+.sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;
+  margin:12px auto 0;}
+.sheet-hdr{padding:16px 20px 12px;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid var(--border);}
+.sheet-title{font-size:16px;font-weight:700;color:var(--white);}
+.sheet-close{background:none;border:none;color:var(--muted);font-size:24px;
+  cursor:pointer;padding:0 4px;line-height:1;}
+.sheet-body{flex:1;overflow-y:auto;padding:16px 20px 24px;
+  -webkit-overflow-scrolling:touch;}
+
+/* ── FORM FIELDS ── */
+.fg{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.fg label{font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--muted);font-family:var(--mono);}
+.fc{background:var(--panel2);border:1px solid var(--border);border-radius:9px;
+  color:var(--text);font-family:var(--font);font-size:14px;
+  padding:12px 14px;outline:none;width:100%;transition:border-color .2s;
+  -webkit-appearance:none;appearance:none;}
+.fc:focus{border-color:var(--accent);}
+textarea.fc{resize:none;min-height:80px;}
+select.fc{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234a6a90' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+select.fc option{background:var(--panel2);}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ── PHOTO SECTION ── */
+.photo-section{background:var(--panel2);border:1px solid var(--border);
+  border-radius:12px;padding:14px;margin-bottom:14px;}
+.photo-section-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--accent);font-family:var(--mono);margin-bottom:12px;}
+.photo-btns{display:flex;gap:10px;margin-bottom:12px;}
+.photo-btn{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:6px;padding:14px 10px;
+  background:rgba(0,200,255,.05);border:2px dashed var(--border);
+  border-radius:10px;color:var(--muted);font-family:var(--mono);font-size:11px;
+  cursor:pointer;transition:all .2s;text-align:center;}
+.photo-btn:active{background:rgba(0,200,255,.12);border-color:var(--accent);color:var(--accent);}
+.photo-btn .pb-icon{font-size:26px;}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.photo-item{position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;
+  background:var(--panel);}
+.photo-item img{width:100%;height:100%;object-fit:cover;}
+.photo-item .uploading-overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;font-size:11px;
+  color:#fff;font-family:var(--mono);}
+.photo-item .rm-btn{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.75);
+  border:none;color:#fff;border-radius:50%;width:22px;height:22px;font-size:13px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.photo-empty{text-align:center;padding:16px;color:var(--muted);
+  font-size:11px;font-family:var(--mono);}
+
+/* ── BUTTONS ── */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:14px 20px;border-radius:10px;border:none;font-family:var(--font);
+  font-size:14px;font-weight:600;cursor:pointer;transition:all .18s;
+  width:100%;letter-spacing:.3px;}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-primary:active{background:#22d4ff;transform:scale(.98);}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:active{background:var(--panel2);}
+.btn-red{background:rgba(255,69,96,.15);color:var(--red);border:1px solid rgba(255,69,96,.3);}
+.btn-green{background:rgba(0,230,118,.12);color:var(--green);border:1px solid rgba(0,230,118,.25);}
+.btn-purple{background:rgba(171,71,255,.12);color:var(--purple);border:1px solid rgba(171,71,255,.25);}
+.btn-sm{padding:9px 16px;font-size:13px;width:auto;}
+.btn-row{display:flex;gap:10px;margin-top:6px;}
+.btn-row .btn{flex:1;}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:calc(var(--bar-h) + 16px + var(--safe-bottom));
+  right:20px;width:54px;height:54px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),#0055ff);
+  border:none;color:#fff;font-size:24px;cursor:pointer;
+  box-shadow:0 4px 20px rgba(0,200,255,.4);z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .2s;}
+.fab:active{transform:scale(.92);}
+
+/* ── DETAIL SECTION ── */
+.det-sec{background:var(--panel2);border:1px solid var(--border);
+  border-radius:10px;padding:14px;margin-bottom:12px;}
+.det-sec-title{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--accent);font-family:var(--mono);margin-bottom:10px;
+  padding-bottom:8px;border-bottom:1px solid var(--border);}
+.det-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.det-item .dk{font-size:9px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:1px;font-family:var(--mono);margin-bottom:3px;}
+.det-item .dv{font-size:13px;font-weight:500;color:var(--text);}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:calc(var(--nav-h) + var(--safe-top) + 10px);
+  left:50%;transform:translateX(-50%) translateY(-80px);
+  background:var(--panel);border:1px solid var(--accent);border-radius:10px;
+  padding:10px 18px;font-size:13px;font-weight:600;color:var(--accent);
+  font-family:var(--mono);z-index:999;transition:transform .3s;
+  white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.err{border-color:var(--red);color:var(--red);}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:48px 20px;color:var(--muted);}
+.empty-state .ei{font-size:42px;margin-bottom:12px;opacity:.3;}
+.empty-state p{font-family:var(--mono);font-size:11px;letter-spacing:2px;
+  text-transform:uppercase;line-height:1.8;}
+
+/* ── SETUP BANNER ── */
+.setup-banner{background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.3);
+  border-radius:10px;padding:14px;margin-bottom:16px;}
+.setup-banner h3{color:var(--yellow);font-size:13px;font-weight:700;margin-bottom:6px;}
+.setup-banner p{font-size:11px;color:var(--text);line-height:1.6;font-family:var(--mono);}
+.setup-banner code{background:rgba(0,0,0,.4);padding:1px 5px;border-radius:3px;
+  color:var(--accent);font-size:11px;}
+
+/* ── PROGRESS BAR ── */
+.progress-bar{height:4px;background:var(--border);border-radius:2px;
+  overflow:hidden;margin-top:8px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#0066ff);
+  border-radius:2px;transition:width .5s;}
+
+/* ── SETTINGS ── */
+.settings-item{background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;margin-bottom:10px;
+  display:flex;align-items:center;gap:12px;cursor:pointer;}
+.si-icon{width:36px;height:36px;border-radius:9px;display:flex;
+  align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.si-text .sit{font-size:14px;font-weight:600;color:var(--white);}
+.si-text .sis{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;}
+.si-arrow{margin-left:auto;color:var(--muted);font-size:18px;}
+
+/* ── LOADING ── */
+.loading{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:40px;gap:12px;}
+.spinner{width:32px;height:32px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{font-size:11px;color:var(--muted);font-family:var(--mono);}
+
+/* ── QUICK STATUS BUTTONS ── */
+.quick-status{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;}
+.qs-btn{padding:10px 8px;border-radius:8px;border:none;font-family:var(--mono);
+  font-size:11px;font-weight:700;cursor:pointer;transition:all .18s;text-align:center;}
+.qs-btn:active{transform:scale(.96);}
+.qs-abierta{background:rgba(255,193,7,.15);color:var(--yellow);border:1px solid rgba(255,193,7,.3);}
+.qs-progreso{background:rgba(0,200,255,.15);color:var(--accent);border:1px solid rgba(0,200,255,.3);}
+.qs-cerrada{background:rgba(0,230,118,.15);color:var(--green);border:1px solid rgba(0,230,118,.3);}
+.qs-cancelada{background:rgba(255,69,96,.15);color:var(--red);border:1px solid rgba(255,69,96,.3);}
+
+@media(min-width:600px){
+  .kpi-row{grid-template-columns:repeat(4,1fr);}
+  .sheet{max-width:520px;left:50%;right:auto;transform:translateX(-50%) translateY(100%);
+    border-radius:20px;bottom:20px;}
+  .sheet.open{transform:translateX(-50%) translateY(0);}
+  .fab{right:calc(50% - 240px + 16px);}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">⚙</div>
+  <div>
+    <div class="topbar-title">MantePro</div>
+    <div class="topbar-sub">Plan 2026</div>
+  </div>
+  <div class="topbar-right">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span class="sync-label" id="sync-label">Conectando...</span>
+  </div>
+</div>
+
+<!-- MAIN AREA -->
+<div class="main" id="main">
+
+  <!-- ══ PAGE: INICIO ══ -->
+  <div class="page active" id="page-inicio">
+    <div id="setup-warn" style="display:none">
+      <div class="setup-banner">
+        <h3>⚠ Firebase no configurado</h3>
+        <p>Trabajando en modo local. Para sincronizar con otros dispositivos, configura Firebase en la pestaña <strong>Ajustes</strong>.<br><br>
+        Los datos se guardan en este dispositivo con <code>localStorage</code>.</p>
+      </div>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-card kpi-c1"><div class="kpi-lbl">Total OT</div><div class="kpi-val" id="k-total">—</div></div>
+      <div class="kpi-card kpi-c2"><div class="kpi-lbl">Abiertas</div><div class="kpi-val" id="k-abierta">—</div></div>
+      <div class="kpi-card kpi-c3"><div class="kpi-lbl">Cerradas</div><div class="kpi-val" id="k-cerrada">—</div></div>
+      <div class="kpi-card kpi-c4"><div class="kpi-lbl">Urgentes</div><div class="kpi-val" id="k-urgente">—</div></div>
+    </div>
+
+    <div class="sec-hdr">
+      <div class="sec-title">// OTs Recientes</div>
+      <span class="sec-count" id="recent-count"></span>
+    </div>
+    <div id="recent-list">
+      <div class="loading"><div class="spinner"></div><p>Cargando...</p></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: OTs ══ -->
+  <div class="page" id="page-ots">
+    <div class="search-wrap">
+      <span class="si">🔍</span>
+      <input type="text" placeholder="Buscar equipo, actividad..." id="ot-search" oninput="filterOTs()">
+    </div>
+    <div class="filter-row" id="filter-row">
+      <div class="fchip active" onclick="setFilter(this,'estado','')" data-key="estado" data-val="">Todos</div>
+      <div class="fchip" onclick="setFilter(this,'estado','Abierta')" data-key="estado" data-val="Abierta">🟡 Abierta</div>
+      <div class="fchip" onclick="setFilter(this,'estado','En Progreso')" data-key="estado" data-val="En Progreso">🔵 Progreso</div>
+      <div class="fchip" onclick="setFilter(this,'estado','Cerrada')" data-key="estado" data-val="Cerrada">🟢 Cerrada</div>
+      <div class="fchip" onclick="setFilter(this,'estado','Cancelada')" data-key="estado" data-val="Cancelada">🔴 Cancelada</div>
+    </div>
+    <div class="filter-row">
+      <div class="fchip active" onclick="setFilter(this,'proceso','')" data-key="proceso" data-val="">Todo</div>
+      <div class="fchip" onclick="setFilter(this,'proceso','Lavado de sal')" data-key="proceso" data-val="Lavado de sal">Lavado</div>
+      <div class="fchip" onclick="setFilter(this,'proceso','Secado')" data-key="proceso" data-val="Secado">Secado</div>
+      <div class="fchip" onclick="setFilter(this,'proceso','Clasificado de sal')" data-key="proceso" data-val="Clasificado de sal">Clasificado</div>
+      <div class="fchip" onclick="setFilter(this,'proceso','Mezclado')" data-key="proceso" data-val="Mezclado">Mezclado</div>
+      <div class="fchip" onclick="setFilter(this,'proceso','Molienda')" data-key="proceso" data-val="Molienda">Molienda</div>
+      <div class="fchip" onclick="setFilter(this,'proceso','Envasado')" data-key="proceso" data-val="Envasado">Envasado</div>
+    </div>
+    <div class="sec-hdr">
+      <div class="sec-title">// Órdenes de Trabajo</div>
+      <span class="sec-count" id="ot-count-label">0</span>
+    </div>
+    <div id="ots-list">
+      <div class="loading"><div class="spinner"></div><p>Cargando...</p></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: CAMARA ══ -->
+  <div class="page" id="page-camara">
+    <div class="sec-hdr"><div class="sec-title">// Registrar con Cámara</div></div>
+    <div class="det-sec" style="text-align:center;padding:28px 20px">
+      <div style="font-size:48px;margin-bottom:12px">📷</div>
+      <p style="font-size:13px;color:var(--text);margin-bottom:6px;font-weight:600">Registrar actividad realizada</p>
+      <p style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:20px;line-height:1.6">
+        Selecciona una OT, saca una foto con la cámara o selecciona de galería, y guarda el registro de la actividad.
+      </p>
+      <div class="fg">
+        <label>OT a registrar</label>
+        <select class="fc" id="cam-ot-select" onchange="camOTSelected()">
+          <option value="">— Seleccionar OT —</option>
+        </select>
+      </div>
+      <div id="cam-ot-info" style="display:none">
+        <div class="det-sec" style="text-align:left;margin-bottom:14px">
+          <div class="det-sec-title">OT Seleccionada</div>
+          <div id="cam-ot-detail"></div>
+        </div>
+      </div>
+      <div class="photo-btns" style="margin-bottom:0">
+        <div class="photo-btn" onclick="document.getElementById('cam-photo-input').click()">
+          <div class="pb-icon">📷</div>
+          <div>Cámara</div>
+        </div>
+        <div class="photo-btn" onclick="document.getElementById('cam-gallery-input').click()">
+          <div class="pb-icon">🖼️</div>
+          <div>Galería</div>
+        </div>
+      </div>
+      <input type="file" id="cam-photo-input" accept="image/*" capture="environment" style="display:none" onchange="camPhotoSelected(event)">
+      <input type="file" id="cam-gallery-input" accept="image/*" multiple style="display:none" onchange="camPhotoSelected(event)">
+    </div>
+    <div id="cam-previews" style="display:none">
+      <div class="sec-hdr" style="margin-top:16px"><div class="sec-title">// Fotos a subir</div><span class="sec-count" id="cam-photo-count"></span></div>
+      <div class="photo-grid" id="cam-photo-grid"></div>
+      <div class="fg" style="margin-top:14px">
+        <label>Observaciones de la actividad</label>
+        <textarea class="fc" id="cam-obs" placeholder="Trabajo realizado, condición encontrada, notas..." rows="3"></textarea>
+      </div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-ghost btn-sm" onclick="clearCamPhotos()">Limpiar</button>
+        <button class="btn btn-primary btn-sm" onclick="saveCamPhotos()" id="cam-save-btn">💾 Guardar registro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: AJUSTES ══ -->
+  <div class="page" id="page-ajustes">
+    <div class="sec-hdr"><div class="sec-title">// Ajustes</div></div>
+
+    <div class="setup-banner" style="margin-bottom:20px">
+      <h3>🔥 Configurar Firebase</h3>
+      <p>Para sincronizar entre teléfono y PC, necesitas un proyecto Firebase gratuito.<br><br>
+      <strong>1.</strong> Ve a <code>console.firebase.google.com</code><br>
+      <strong>2.</strong> Crea un proyecto → Agrega app web<br>
+      <strong>3.</strong> Copia la configuración aquí abajo<br>
+      <strong>4.</strong> Activa Firestore y Storage en el proyecto</p>
+    </div>
+
+    <div class="det-sec">
+      <div class="det-sec-title">Configuración Firebase</div>
+      <div class="fg"><label>API Key</label><input class="fc" id="cfg-apikey" placeholder="AIzaSy..."></div>
+      <div class="fg"><label>Project ID</label><input class="fc" id="cfg-projectid" placeholder="mi-proyecto-12345"></div>
+      <div class="fg"><label>Storage Bucket</label><input class="fc" id="cfg-bucket" placeholder="mi-proyecto.appspot.com"></div>
+      <div class="fg"><label>App ID</label><input class="fc" id="cfg-appid" placeholder="1:123456:web:abc..."></div>
+      <button class="btn btn-primary" onclick="saveFirebaseConfig()" style="margin-top:4px">💾 Guardar y reconectar</button>
+    </div>
+
+    <div style="height:16px"></div>
+
+    <div class="settings-item" onclick="exportAllExcel()">
+      <div class="si-icon" style="background:rgba(0,230,118,.15)">📊</div>
+      <div class="si-text"><div class="sit">Exportar Excel</div><div class="sis">Todas las OTs en .xlsx</div></div>
+      <div class="si-arrow">›</div>
+    </div>
+    <div class="settings-item" onclick="exportAllPDF()">
+      <div class="si-icon" style="background:rgba(171,71,255,.15)">📄</div>
+      <div class="si-text"><div class="sit">Exportar PDF</div><div class="sis">Fichas completas con fotos</div></div>
+      <div class="si-arrow">›</div>
+    </div>
+    <div class="settings-item" onclick="showInstallGuide()">
+      <div class="si-icon" style="background:rgba(0,200,255,.15)">📱</div>
+      <div class="si-text"><div class="sit">Instalar como App</div><div class="sis">Agregar al inicio del teléfono</div></div>
+      <div class="si-arrow">›</div>
+    </div>
+    <div class="settings-item" onclick="clearLocalData()">
+      <div class="si-icon" style="background:rgba(255,69,96,.15)">🗑️</div>
+      <div class="si-text"><div class="sit">Limpiar datos locales</div><div class="sis">Borra caché del dispositivo</div></div>
+      <div class="si-arrow">›</div>
+    </div>
+
+    <div class="det-sec" style="margin-top:16px">
+      <div class="det-sec-title">Estado del Sistema</div>
+      <div class="det-row">
+        <div class="det-item"><div class="dk">Modo</div><div class="dv" id="cfg-mode">Local</div></div>
+        <div class="det-item"><div class="dk">OTs cargadas</div><div class="dv" id="cfg-ot-count">—</div></div>
+        <div class="det-item"><div class="dk">Versión</div><div class="dv">1.0.0</div></div>
+        <div class="det-item"><div class="dk">Última sync</div><div class="dv" id="cfg-last-sync">—</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .main -->
+
+<!-- BOTTOM NAV -->
+<nav class="bottomnav">
+  <button class="bnav-item active" onclick="showPage('inicio',this)" id="nav-inicio">
+    <span class="icon">🏠</span><span>Inicio</span>
+  </button>
+  <button class="bnav-item" onclick="showPage('ots',this)" id="nav-ots">
+    <span class="icon bnav-badge" id="badge-ots" data-count="0">📋</span><span>OTs</span>
+  </button>
+  <button class="bnav-item" onclick="showPage('camara',this)" id="nav-camara">
+    <span class="icon">📷</span><span>Cámara</span>
+  </button>
+  <button class="bnav-item" onclick="showPage('ajustes',this)" id="nav-ajustes">
+    <span class="icon">⚙️</span><span>Ajustes</span>
+  </button>
+</nav>
+
+<!-- FAB -->
+<button class="fab" onclick="openNewOT()" id="fab-btn" title="Nueva OT">＋</button>
+
+<!-- SHEET OVERLAY -->
+<div class="sheet-overlay" id="sheet-overlay" onclick="closeSheet()"></div>
+
+<!-- SHEET: OT DETAIL -->
+<div class="sheet" id="sheet-detail">
+  <div class="sheet-handle"></div>
+  <div class="sheet-hdr">
+    <div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--accent)" id="det-num"></div>
+      <div class="sheet-title" id="det-equipo"></div>
+    </div>
+    <button class="sheet-close" onclick="closeSheet()">×</button>
+  </div>
+  <div class="sheet-body" id="det-body"></div>
+</div>
+
+<!-- SHEET: OT FORM -->
+<div class="sheet" id="sheet-form">
+  <div class="sheet-handle"></div>
+  <div class="sheet-hdr">
+    <div class="sheet-title" id="form-title">Nueva OT</div>
+    <button class="sheet-close" onclick="closeSheet()">×</button>
+  </div>
+  <div class="sheet-body">
+    <input type="hidden" id="form-id">
+    <div class="fg">
+      <label>Equipo / Activo *</label>
+      <select class="fc" id="form-equipo" onchange="autoFillProceso()">
+        <option value="">— Seleccionar —</option>
+      </select>
+    </div>
+    <div class="fg-row">
+      <div class="fg">
+        <label>Código</label>
+        <input class="fc" id="form-codigo" type="text" placeholder="A1B" readonly style="opacity:.6">
+      </div>
+      <div class="fg">
+        <label>Proceso</label>
+        <input class="fc" id="form-proceso" type="text" placeholder="Lavado de sal" readonly style="opacity:.6">
+      </div>
+    </div>
+    <div class="fg">
+      <label>Actividad / Trabajo *</label>
+      <textarea class="fc" id="form-actividad" placeholder="Describe el trabajo a realizar..." rows="3"></textarea>
+    </div>
+    <div class="fg-row">
+      <div class="fg">
+        <label>Tipo</label>
+        <select class="fc" id="form-tipo">
+          <option value="Preventivo">Preventivo</option>
+          <option value="Correctivo">Correctivo</option>
+          <option value="Predictivo">Predictivo</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Prioridad</label>
+        <select class="fc" id="form-prioridad">
+          <option value="Alta">🔴 Alta</option>
+          <option value="Media" selected>🟡 Media</option>
+          <option value="Baja">🟢 Baja</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg-row">
+      <div class="fg">
+        <label>Fecha</label>
+        <input class="fc" id="form-fecha" type="date">
+      </div>
+      <div class="fg">
+        <label>Estado</label>
+        <select class="fc" id="form-estado">
+          <option value="Abierta">Abierta</option>
+          <option value="En Progreso">En Progreso</option>
+          <option value="Cerrada">Cerrada</option>
+          <option value="Cancelada">Cancelada</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Técnico Responsable</label>
+      <input class="fc" id="form-tecnico" type="text" placeholder="Nombre del técnico">
+    </div>
+    <div class="fg">
+      <label>Autorizado por</label>
+      <input class="fc" id="form-autorizado" type="text" placeholder="Nombre supervisor">
+    </div>
+    <div class="fg-row">
+      <div class="fg">
+        <label>Marca</label>
+        <input class="fc" id="form-marca" type="text" placeholder="Ej: Siemens">
+      </div>
+      <div class="fg">
+        <label>Modelo</label>
+        <input class="fc" id="form-modelo" type="text" placeholder="Ej: 1LA7-083">
+      </div>
+    </div>
+    <div class="fg">
+      <label>Área / Ubicación</label>
+      <input class="fc" id="form-ubicacion" type="text" placeholder="Ej: Sala de máquinas">
+    </div>
+    <div class="fg-row">
+      <div class="fg">
+        <label>Hora Inicio</label>
+        <input class="fc" id="form-hora-inicio" type="time">
+      </div>
+      <div class="fg">
+        <label>Hora Término</label>
+        <input class="fc" id="form-hora-termino" type="time">
+      </div>
+    </div>
+    <div class="fg">
+      <label>Materiales / Repuestos</label>
+      <input class="fc" id="form-materiales" type="text" placeholder="Aceite SAE 90, Rodamiento 6205...">
+    </div>
+    <div class="fg">
+      <label>Duración est. (hrs)</label>
+      <input class="fc" id="form-duracion" type="number" placeholder="2" step="0.5" min="0.5">
+    </div>
+
+    <!-- ACTIVIDADES -->
+    <div class="fg">
+      <label>✅ Actividades Realizadas</label>
+      <div style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:10px;overflow:hidden;">
+        <div id="form-actividades-list"></div>
+      </div>
+    </div>
+
+    <!-- CONDICIONES SANITARIAS -->
+    <div class="fg">
+      <label>🧼 Verificación Sanitaria Post Mantención</label>
+      <div style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:10px;overflow:hidden;">
+        <div class="san-item" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px;">
+          <span style="flex:1;font-size:12px;color:var(--text);line-height:1.4;">Ausencia de partículas metálicas o no metálicas sueltas</span>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;">
+              <input type="radio" name="pwa-san1" value="SI" style="width:18px;height:18px;accent-color:#00e676;">
+              <span style="font-size:9px;color:#00e676;font-weight:700;">SI</span>
+            </label>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;">
+              <input type="radio" name="pwa-san1" value="NO" style="width:18px;height:18px;accent-color:#ff4560;">
+              <span style="font-size:9px;color:#ff4560;font-weight:700;">NO</span>
+            </label>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;">
+              <input type="radio" name="pwa-san1" value="NA" checked style="width:18px;height:18px;accent-color:#666;">
+              <span style="font-size:9px;color:#666;font-weight:700;">N/A</span>
+            </label>
+          </div>
+        </div>
+        <div class="san-item" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.02);">
+          <span style="flex:1;font-size:12px;color:var(--text);line-height:1.4;">Ausencia de restos químicos (lubricantes, pinturas)</span>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;"><input type="radio" name="pwa-san2" value="SI" style="width:18px;height:18px;accent-color:#00e676;"><span style="font-size:9px;color:#00e676;font-weight:700;">SI</span></label>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;"><input type="radio" name="pwa-san2" value="NO" style="width:18px;height:18px;accent-color:#ff4560;"><span style="font-size:9px;color:#ff4560;font-weight:700;">NO</span></label>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;"><input type="radio" name="pwa-san2" value="NA" checked style="width:18px;height:18px;accent-color:#666;"><span style="font-size:9px;color:#666;font-weight:700;">N/A</span></label>
+          </div>
+        </div>
+        <div class="san-item" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:10px;">
+          <span style="flex:1;font-size:12px;color:var(--text);line-height:1.4;">Ausencia de restos biológicos (plagas) y/o productos</span>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;"><input type="radio" name="pwa-san3" value="SI" style="width:18px;height:18px;accent-color:#00e676;"><span style="font-size:9px;color:#00e676;font-weight:700;">SI</span></label>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;"><input type="radio" name="pwa-san3" value="NO" style="width:18px;height:18px;accent-color:#ff4560;"><span style="font-size:9px;color:#ff4560;font-weight:700;">NO</span></label>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;"><input type="radio" name="pwa-san3" value="NA" checked style="width:18px;height:18px;accent-color:#666;"><span style="font-size:9px;color:#666;font-weight:700;">N/A</span></label>
+          </div>
+        </div>
+        <div class="san-item" style="padding:10px 14px;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.02);">
+          <span style="flex:1;font-size:12px;color:var(--text);line-height:1.4;">Se <strong style="color:#00e676;">autoriza el uso</strong> del equipo</span>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;"><input type="radio" name="pwa-san4" value="SI" style="width:18px;height:18px;accent-color:#00e676;"><span style="font-size:9px;color:#00e676;font-weight:700;">SI</span></label>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;"><input type="radio" name="pwa-san4" value="NO" style="width:18px;height:18px;accent-color:#ff4560;"><span style="font-size:9px;color:#ff4560;font-weight:700;">NO</span></label>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;"><input type="radio" name="pwa-san4" value="NA" checked style="width:18px;height:18px;accent-color:#666;"><span style="font-size:9px;color:#666;font-weight:700;">N/A</span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>Observaciones</label>
+      <textarea class="fc" id="form-obs" placeholder="Notas adicionales..." rows="2"></textarea>
+    </div>
+
+    <!-- FOTOS POR ETAPA -->
+    <div class="photo-section">
+      <div class="photo-section-title">📷 Registro Fotográfico</div>
+      <!-- Tabs etapa -->
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <button type="button" id="pwa-tab-antes" onclick="setPwaFotoTab('antes')"
+          style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,69,96,.4);background:rgba(255,69,96,.15);color:#ff4560;font-size:11px;cursor:pointer;font-weight:700;">
+          🔴 ANTES
+        </button>
+        <button type="button" id="pwa-tab-durante" onclick="setPwaFotoTab('durante')"
+          style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#888;font-size:11px;cursor:pointer;">
+          🟡 DURANTE
+        </button>
+        <button type="button" id="pwa-tab-despues" onclick="setPwaFotoTab('despues')"
+          style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#888;font-size:11px;cursor:pointer;">
+          🟢 DESPUÉS
+        </button>
+      </div>
+      <!-- Zona antes -->
+      <div id="pwa-zona-antes">
+        <div class="photo-btns">
+          <div class="photo-btn" onclick="document.getElementById('pwa-cam-antes').click()"><div class="pb-icon">📷</div><div>Cámara</div></div>
+          <div class="photo-btn" onclick="document.getElementById('pwa-gal-antes').click()"><div class="pb-icon">🖼️</div><div>Galería</div></div>
+        </div>
+        <input type="file" id="pwa-cam-antes" accept="image/*" capture="environment" style="display:none" onchange="addPwaFotos(event,'antes')">
+        <input type="file" id="pwa-gal-antes" accept="image/*" multiple style="display:none" onchange="addPwaFotos(event,'antes')">
+        <div class="photo-grid" id="pwa-grid-antes"><div class="photo-empty">Sin fotos</div></div>
+      </div>
+      <!-- Zona durante -->
+      <div id="pwa-zona-durante" style="display:none">
+        <div class="photo-btns">
+          <div class="photo-btn" onclick="document.getElementById('pwa-cam-durante').click()"><div class="pb-icon">📷</div><div>Cámara</div></div>
+          <div class="photo-btn" onclick="document.getElementById('pwa-gal-durante').click()"><div class="pb-icon">🖼️</div><div>Galería</div></div>
+        </div>
+        <input type="file" id="pwa-cam-durante" accept="image/*" capture="environment" style="display:none" onchange="addPwaFotos(event,'durante')">
+        <input type="file" id="pwa-gal-durante" accept="image/*" multiple style="display:none" onchange="addPwaFotos(event,'durante')">
+        <div class="photo-grid" id="pwa-grid-durante"><div class="photo-empty">Sin fotos</div></div>
+      </div>
+      <!-- Zona después -->
+      <div id="pwa-zona-despues" style="display:none">
+        <div class="photo-btns">
+          <div class="photo-btn" onclick="document.getElementById('pwa-cam-despues').click()"><div class="pb-icon">📷</div><div>Cámara</div></div>
+          <div class="photo-btn" onclick="document.getElementById('pwa-gal-despues').click()"><div class="pb-icon">🖼️</div><div>Galería</div></div>
+        </div>
+        <input type="file" id="pwa-cam-despues" accept="image/*" capture="environment" style="display:none" onchange="addPwaFotos(event,'despues')">
+        <input type="file" id="pwa-gal-despues" accept="image/*" multiple style="display:none" onchange="addPwaFotos(event,'despues')">
+        <div class="photo-grid" id="pwa-grid-despues"><div class="photo-empty">Sin fotos</div></div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-ghost" onclick="closeSheet()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveOT()">💾 Guardar</button>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- SHEET: INSTALL GUIDE -->
+<div class="sheet" id="sheet-install">
+  <div class="sheet-handle"></div>
+  <div class="sheet-hdr">
+    <div class="sheet-title">📱 Instalar como App</div>
+    <button class="sheet-close" onclick="closeSheet()">×</button>
+  </div>
+  <div class="sheet-body">
+    <div class="det-sec">
+      <div class="det-sec-title">Android (Chrome)</div>
+      <p style="font-size:13px;line-height:1.8;color:var(--text)">
+        1. Abre esta página en Chrome<br>
+        2. Toca el menú <strong>⋮</strong> (3 puntos arriba a la derecha)<br>
+        3. Toca <strong>"Añadir a pantalla de inicio"</strong><br>
+        4. Confirma → La app aparece en tu inicio
+      </p>
+    </div>
+    <div class="det-sec">
+      <div class="det-sec-title">iPhone / iPad (Safari)</div>
+      <p style="font-size:13px;line-height:1.8;color:var(--text)">
+        1. Abre esta página en Safari<br>
+        2. Toca el botón <strong>Compartir</strong> (cuadrado con flecha ↑)<br>
+        3. Scroll abajo → toca <strong>"Añadir a pantalla de inicio"</strong><br>
+        4. Confirma → La app aparece en tu inicio
+      </p>
+    </div>
+    <div class="det-sec">
+      <div class="det-sec-title" style="color:var(--yellow)">⚠ Importante</div>
+      <p style="font-size:12px;line-height:1.7;color:var(--text);font-family:var(--mono)">
+        La app debe estar <strong>alojada en un servidor web</strong> para poder instalarse. Puedes usar GitHub Pages (gratis) o cualquier hosting. Sin servidor, funciona igual pero no se instala.
+      </p>
+    </div>
+    <button class="btn btn-ghost" onclick="closeSheet()" style="margin-top:8px">Cerrar</button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATOS — EQUIPOS DEL PLAN 2026
+// ═══════════════════════════════════════════════════════
+const EQUIPOS_PLAN = [
+  {id:"A16",nombre:"Motoreductor de Rosco bajo tolva de materia prima",ub:"Lavado de sal"},
+  {id:"A15",nombre:"Motoreductor Elevador hacia estanque de agua",ub:"Lavado de sal"},
+  {id:"A14",nombre:"Motoreductor Tamizador",ub:"Lavado de sal"},
+  {id:"A5",nombre:"Bomba de traslado de sal hacia centrifuga",ub:"Lavado de sal"},
+  {id:"A1B",nombre:"Centrifuga",ub:"Lavado de sal"},
+  {id:"A13",nombre:"Rosco salida centrifuga",ub:"Lavado de sal"},
+  {id:"A3",nombre:"Bomba de residuos hacia estanque de agua principal",ub:"Lavado de sal"},
+  {id:"",nombre:"Bomba debajo de estanque de agua hacia decanter",ub:"Lavado de sal"},
+  {id:"",nombre:"Decanter",ub:"Lavado de sal"},
+  {id:"",nombre:"Motor Principal decanter",ub:"Lavado de sal"},
+  {id:"",nombre:"Motor segundario decanter",ub:"Lavado de sal"},
+  {id:"A17",nombre:"Rosco salida de solidos",ub:"Lavado de sal"},
+  {id:"A4",nombre:"Bomba debajo del decanter hacia estanque de agua principal",ub:"Lavado de sal"},
+  {id:"M15",nombre:"Ventilador suministro de aire secador",ub:"Secado"},
+  {id:"M24",nombre:"Ventilador de enfriamiento",ub:"Secado"},
+  {id:"M25",nombre:"Ventilador extracion de aire",ub:"Secado"},
+  {id:"M01",nombre:"Dryer (Secador Lecho Fluidizado)",ub:"Secado"},
+  {id:"M33",nombre:"Transportador de tornillo bajo filtro",ub:"Secado"},
+  {id:"M44",nombre:"Esclusa salida filtro",ub:"Secado"},
+  {id:"A12",nombre:"Rosco salida de producto fino hacia big bag",ub:"Secado"},
+  {id:"E15",nombre:"Filtro de mangas (Bag Filter)",ub:"Secado"},
+  {id:"A11",nombre:"Rosco salida secador",ub:"Clasificado de sal"},
+  {id:"A10",nombre:"Elevador hacia tamizador",ub:"Clasificado de sal"},
+  {id:"A9",nombre:"Tamizador swego",ub:"Clasificado de sal"},
+  {id:"A6",nombre:"Rosco salida tamizador grueso",ub:"Clasificado de sal"},
+  {id:"A7",nombre:"Rosco salida tamizador regular",ub:"Clasificado de sal"},
+  {id:"A8",nombre:"Rosco salida tamizador fino",ub:"Clasificado de sal"},
+  {id:"QM1",nombre:"Tamizador Mixer",ub:"Mezclado"},
+  {id:"QM2",nombre:"Rosco alimentador tamizador",ub:"Mezclado"},
+  {id:"QM3",nombre:"Mixer",ub:"Mezclado"},
+  {id:"QM4",nombre:"Rosco alimentador mixer",ub:"Mezclado"},
+  {id:"QM5",nombre:"Rosco antiaglomerante",ub:"Mezclado"},
+  {id:"B1",nombre:"Rosco hacia salida de rosco centrifuga",ub:"Molienda"},
+  {id:"B2",nombre:"Rosco salida Molino",ub:"Molienda"},
+  {id:"B3",nombre:"Molino",ub:"Molienda"},
+  {id:"B4",nombre:"Rosco entrada molino",ub:"Molienda"},
+  {id:"B5",nombre:"Rosco salida clasificadora",ub:"Molienda"},
+  {id:"B6",nombre:"Rosco entrada clasificadora",ub:"Molienda"},
+  {id:"30Q",nombre:"Clasificadora",ub:"Molienda"},
+  {id:"QM5.1",nombre:"Motoreductor porta Bobina",ub:"Envasado"},
+  {id:"QM3.1",nombre:"Motoreductor transportador de Bobina",ub:"Envasado"},
+  {id:"QM2.1",nombre:"Motoreductor desplazamiento de brazos toma envase",ub:"Envasado"},
+  {id:"QM2.4",nombre:"Motoreductor cinta transportadora #1",ub:"Envasado"},
+  {id:"",nombre:"Motoreductor cinta transportadora #2",ub:"Envasado"},
+  {id:"",nombre:"Envasadora MTB",ub:"Envasado"},
+  {id:"",nombre:"Compresor",ub:"Sala de Compresor"},
+];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let OTs = [];
+let _formPhotos = []; // {name, dataURL, file, url(after upload)}
+let _camPhotos = [];
+let _editId = null;
+let _detailId = null;
+let _filters = { estado:'', proceso:'' };
+let _unsubscribe = null;
+let FIREBASE_READY = false;
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+window.addEventListener('firebase-ready', () => {
+  FIREBASE_READY = window._FB && window._FB.FIREBASE_OK;
+  initApp();
+});
+// Fallback if firebase-ready doesn't fire
+setTimeout(() => { if (!OTs.length) initApp(); }, 1500);
+
+function initApp() {
+  populateEquiposSelect();
+  populateCamOTSelect();
+  loadFirebaseConfigUI();
+
+  if (FIREBASE_READY) {
+    setSyncStatus('syncing', 'Sincronizando...');
+    startFirestoreListener();
+    document.getElementById('cfg-mode').textContent = 'Firebase 🔥';
+    document.getElementById('setup-warn').style.display = 'none';
+  } else {
+    setSyncStatus('offline', 'Local');
+    loadLocalOTs();
+    document.getElementById('setup-warn').style.display = 'block';
+    document.getElementById('cfg-mode').textContent = 'Local 💾';
+  }
+}
+
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot ' + (state === 'online' ? 'online' : state === 'syncing' ? 'syncing' : '');
+  lbl.textContent = label;
+}
+
+// ═══════════════════════════════════════════════════════
+// FIRESTORE LISTENER (realtime)
+// ═══════════════════════════════════════════════════════
+function startFirestoreListener() {
+  const FB = window._FB;
+  if (!FB || !FB.FIREBASE_OK) return;
+  const q = FB.query(FB.collection(FB.db, 'ordenes'), FB.orderBy('creado', 'desc'));
+  _unsubscribe = FB.onSnapshot(q,
+    (snap) => {
+      OTs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setSyncStatus('online', 'Sincronizado ✓');
+      document.getElementById('cfg-last-sync').textContent = new Date().toLocaleTimeString('es-CL');
+      document.getElementById('cfg-ot-count').textContent = OTs.length;
+      renderAll();
+      populateCamOTSelect();
+    },
+    (err) => {
+      console.error('Firestore error:', err);
+      setSyncStatus('offline', 'Error sync');
+      toast('Error de conexión — trabajando local', true);
+      loadLocalOTs();
+    }
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// LOCAL STORAGE FALLBACK
+// ═══════════════════════════════════════════════════════
+function loadLocalOTs() {
+  try {
+    const saved = localStorage.getItem('mantepro_ots_pwa');
+    OTs = saved ? JSON.parse(saved) : [];
+    // Remove dataURLs from photos to save space
+    OTs.forEach(o => { if (o.photos) o.photos = o.photos.map(p => ({name:p.name, url:p.url||''})); });
+  } catch(e) { OTs = []; }
+  document.getElementById('cfg-ot-count').textContent = OTs.length;
+  renderAll();
+  populateCamOTSelect();
+}
+
+function saveLocal() {
+  try { localStorage.setItem('mantepro_ots_pwa', JSON.stringify(OTs)); } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════
+// FIRESTORE CRUD
+// ═══════════════════════════════════════════════════════
+async function saveOTToFirestore(otData) {
+  const FB = window._FB;
+  if (!FB || !FB.FIREBASE_OK) return null;
+  const { id, ...data } = otData;
+  data.creado = data.creado || FB.serverTimestamp();
+  data.actualizado = FB.serverTimestamp();
+  if (id) {
+    await FB.updateDoc(FB.doc(FB.db, 'ordenes', id), data);
+    return id;
+  } else {
+    const ref = await FB.addDoc(FB.collection(FB.db, 'ordenes'), data);
+    return ref.id;
+  }
+}
+
+async function deleteOTFromFirestore(id) {
+  const FB = window._FB;
+  if (!FB || !FB.FIREBASE_OK) return;
+  await FB.deleteDoc(FB.doc(FB.db, 'ordenes', id));
+}
+
+// ═══════════════════════════════════════════════════════
+// FIREBASE STORAGE — UPLOAD PHOTO
+// ═══════════════════════════════════════════════════════
+async function uploadPhotoToStorage(file, otId) {
+  const FB = window._FB;
+  if (!FB || !FB.FIREBASE_OK || !file) return null;
+  try {
+    const path = `fotos/${otId}/${Date.now()}_${file.name}`;
+    const storageRef = FB.ref(FB.storage, path);
+    const snap = await FB.uploadBytes(storageRef, file);
+    const url = await FB.getDownloadURL(snap.ref);
+    return { name: file.name, url, path };
+  } catch(e) {
+    console.error('Upload error:', e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+function renderAll() {
+  renderKPIs();
+  renderRecentList();
+  renderOTsList();
+}
+
+function renderKPIs() {
+  const t = OTs.length;
+  document.getElementById('k-total').textContent = t;
+  document.getElementById('k-abierta').textContent = OTs.filter(o=>o.estado==='Abierta').length;
+  document.getElementById('k-cerrada').textContent = OTs.filter(o=>o.estado==='Cerrada').length;
+  document.getElementById('k-urgente').textContent = OTs.filter(o=>o.prioridad==='Alta'&&o.estado!=='Cerrada').length;
+  const bOTs = document.getElementById('badge-ots');
+  bOTs.setAttribute('data-count', OTs.filter(o=>o.estado==='Abierta'||o.estado==='En Progreso').length);
+}
+
+function renderRecentList() {
+  const recent = [...OTs].slice(0, 6);
+  const el = document.getElementById('recent-list');
+  document.getElementById('recent-count').textContent = OTs.length + ' OT total';
+  if (!recent.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ei">📋</div><p>Sin órdenes de trabajo<br>Crea la primera con el botón ＋</p></div>';
+    return;
+  }
+  el.innerHTML = recent.map(o => otCard(o)).join('');
+}
+
+function getFiltered() {
+  const q = (document.getElementById('ot-search').value||'').toLowerCase();
+  return OTs.filter(o => {
+    if (_filters.estado && o.estado !== _filters.estado) return false;
+    if (_filters.proceso && o.proceso !== _filters.proceso) return false;
+    if (q && !(o.equipo||'').toLowerCase().includes(q) &&
+        !(o.actividad||'').toLowerCase().includes(q) &&
+        !(o.num||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderOTsList() {
+  const list = getFiltered();
+  const el = document.getElementById('ots-list');
+  document.getElementById('ot-count-label').textContent = list.length + ' OTs';
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ei">📄</div><p>Sin resultados</p></div>';
+    return;
+  }
+  el.innerHTML = list.map(o => otCard(o)).join('');
+}
+
+function stClass(e){
+  const m={'Abierta':'abierta','En Progreso':'progreso','Cerrada':'cerrada','Cancelada':'cancelada'};
+  return m[e]||'abierta';
+}
+function stBadge(e){
+  const cls=stClass(e);
+  return `<span class="badge-st bs-${cls}">${e||'Abierta'}</span>`;
+}
+function fmtD(d){if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}`;}
+
+function otCard(o) {
+  const photos = o.photos||[];
+  return `<div class="ot-card st-${stClass(o.estado)}" onclick="openDetail('${o.id}')">
+    <div class="ot-card-top">
+      <div>
+        <div class="ot-num">${o.num||o.id||''}</div>
+        <div class="ot-equipo">${o.equipo||'Sin equipo'}</div>
+      </div>
+      ${stBadge(o.estado)}
+    </div>
+    <div class="ot-act">${o.actividad||'Sin descripción'}</div>
+    <div class="ot-card-meta">
+      ${o.proceso?`<span class="meta-chip mc-proceso">${o.proceso}</span>`:''}
+      ${o.tipo?`<span class="meta-chip mc-tipo-${(o.tipo||'P')[0]}">${o.tipo}</span>`:''}
+      ${o.fecha?`<span class="meta-chip mc-fecha">📅 ${fmtD(o.fecha)}</span>`:''}
+      ${photos.length?`<span class="meta-chip mc-foto">📷 ${photos.length}</span>`:''}
+      ${o.prioridad?`<span class="meta-chip prio-chip pr-${(o.prioridad||'').toLowerCase()}">${o.prioridad}</span>`:''}
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// FILTERS
+// ═══════════════════════════════════════════════════════
+function setFilter(el, key, val) {
+  _filters[key] = val;
+  document.querySelectorAll(`[data-key="${key}"]`).forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderOTsList();
+}
+function filterOTs() { renderOTsList(); }
+
+// ═══════════════════════════════════════════════════════
+// DETAIL SHEET
+// ═══════════════════════════════════════════════════════
+function openDetail(id) {
+  const o = OTs.find(x => x.id === id);
+  if (!o) return;
+  _detailId = id;
+  document.getElementById('det-num').textContent = o.num || o.id;
+  document.getElementById('det-equipo').textContent = o.equipo || '—';
+  const photos = o.photos || [];
+  const photosHtml = photos.length
+    ? `<div class="photo-grid">${photos.map(p=>`
+        <div class="photo-item">
+          ${p.url?`<img src="${p.url}" alt="${p.name}" loading="lazy">`:`<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:22px;color:var(--muted)">📷</div>`}
+          <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);
+            font-size:9px;padding:3px 5px;font-family:var(--mono);color:#ccc;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name||''}</div>
+        </div>`).join('')}</div>`
+    : `<p class="photo-empty">Sin fotos</p>`;
+
+  document.getElementById('det-body').innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      ${stBadge(o.estado)}
+      ${o.tipo?`<span class="meta-chip mc-tipo-${(o.tipo[0])}">${o.tipo}</span>`:''}
+      ${o.prioridad?`<span class="meta-chip prio-chip pr-${(o.prioridad||'').toLowerCase()}">${o.prioridad}</span>`:''}
+    </div>
+    <div class="det-sec">
+      <div class="det-sec-title">Información</div>
+      <div class="det-row">
+        <div class="det-item"><div class="dk">Proceso</div><div class="dv">${o.proceso||'—'}</div></div>
+        <div class="det-item"><div class="dk">Código</div><div class="dv" style="font-family:var(--mono)">${o.codigo||'—'}</div></div>
+        <div class="det-item"><div class="dk">Técnico</div><div class="dv">${o.tecnico||'—'}</div></div>
+        <div class="det-item"><div class="dk">Fecha</div><div class="dv">${fmtD(o.fecha)}</div></div>
+        <div class="det-item"><div class="dk">Duración</div><div class="dv">${o.duracion?o.duracion+'h':'—'}</div></div>
+        <div class="det-item"><div class="dk">Materiales</div><div class="dv" style="font-size:12px">${o.materiales||'—'}</div></div>
+      </div>
+    </div>
+    <div class="det-sec">
+      <div class="det-sec-title">Actividad</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--text)">${o.actividad||'—'}</p>
+    </div>
+    ${o.obs?`<div class="det-sec"><div class="det-sec-title">Observaciones</div><p style="font-size:13px;line-height:1.7">${o.obs}</p></div>`:''}
+    <div class="det-sec">
+      <div class="det-sec-title">📷 Fotos (${photos.length})</div>
+      ${photosHtml}
+    </div>
+
+    <!-- CAMBIO RÁPIDO DE ESTADO -->
+    <div class="det-sec">
+      <div class="det-sec-title">Cambiar estado</div>
+      <div class="quick-status">
+        <button class="qs-btn qs-abierta" onclick="quickStatus('${id}','Abierta')">🟡 Abierta</button>
+        <button class="qs-btn qs-progreso" onclick="quickStatus('${id}','En Progreso')">🔵 En Progreso</button>
+        <button class="qs-btn qs-cerrada" onclick="quickStatus('${id}','Cerrada')">🟢 Cerrada</button>
+        <button class="qs-btn qs-cancelada" onclick="quickStatus('${id}','Cancelada')">🔴 Cancelada</button>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn btn-ghost btn-sm" onclick="editOT('${id}')">✏️ Editar</button>
+      <button class="btn btn-purple btn-sm" onclick="exportOnePDF('${id}')">📄 PDF</button>
+      <button class="btn btn-red btn-sm" onclick="deleteOT('${id}')">🗑</button>
+    </div>
+    <div style="height:16px"></div>`;
+
+  openSheet('sheet-detail');
+}
+
+async function quickStatus(id, newStatus) {
+  const idx = OTs.findIndex(o => o.id === id);
+  if (idx < 0) return;
+  OTs[idx].estado = newStatus;
+  setSyncStatus('syncing', 'Guardando...');
+  try {
+    if (FIREBASE_READY) await saveOTToFirestore(OTs[idx]);
+    else saveLocal();
+    setSyncStatus('online', 'Guardado ✓');
+    toast('Estado → ' + newStatus);
+    renderAll();
+    // Refresh detail
+    openDetail(id);
+  } catch(e) {
+    setSyncStatus('offline', 'Error'); toast('Error al guardar', true);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// FORM — OPEN / SAVE / DELETE
+// ═══════════════════════════════════════════════════════
+function populateEquiposSelect() {
+  const sel = document.getElementById('form-equipo');
+  sel.innerHTML = '<option value="">— Seleccionar —</option>';
+  EQUIPOS_PLAN.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.nombre;
+    opt.textContent = e.nombre + (e.id ? ` [${e.id}]` : '');
+    opt.dataset.id = e.id;
+    opt.dataset.ub = e.ub;
+    sel.appendChild(opt);
+  });
+}
+
+function autoFillProceso() {
+  const sel = document.getElementById('form-equipo');
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('form-codigo').value = opt ? opt.dataset.id || '' : '';
+  document.getElementById('form-proceso').value = opt ? opt.dataset.ub || '' : '';
+}
+
+function nextNum() {
+  const nums = OTs.map(o => parseInt((o.num||'').replace('OT-2026-','')) || 0);
+  return 'OT-2026-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3,'0');
+}
+
+function openNewOT() {
+  _editId = null;
+  _formPhotos = [];
+  _pwaFotos = { antes:[], durante:[], despues:[] };
+  document.getElementById('form-title').textContent = 'Nueva OT';
+  document.getElementById('form-id').value = '';
+  document.getElementById('form-equipo').value = '';
+  document.getElementById('form-codigo').value = '';
+  document.getElementById('form-proceso').value = '';
+  document.getElementById('form-actividad').value = '';
+  document.getElementById('form-tipo').value = 'Preventivo';
+  document.getElementById('form-prioridad').value = 'Media';
+  document.getElementById('form-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('form-estado').value = 'Abierta';
+  document.getElementById('form-tecnico').value = '';
+  document.getElementById('form-autorizado').value = '';
+  document.getElementById('form-marca').value = '';
+  document.getElementById('form-modelo').value = '';
+  document.getElementById('form-ubicacion').value = '';
+  document.getElementById('form-hora-inicio').value = '';
+  document.getElementById('form-hora-termino').value = '';
+  document.getElementById('form-materiales').value = '';
+  document.getElementById('form-duracion').value = '';
+  document.getElementById('form-obs').value = '';
+  ['pwa-san1','pwa-san2','pwa-san3','pwa-san4'].forEach(n=>{
+    const el=document.querySelector(`input[name="${n}"][value="NA"]`);
+    if(el) el.checked=true;
+  });
+  renderActividadesPwa([]);
+  ['antes','durante','despues'].forEach(t=>renderPwaFotoGrid(t));
+  setPwaFotoTab('antes');
+  renderFormPhotos();
+  openSheet('sheet-form');
+}
+
+function editOT(id) {
+  const o = OTs.find(x => x.id === id);
+  if (!o) return;
+  _editId = id;
+  _formPhotos = (o.photos || []).map(p => ({ name: p.name, url: p.url || '', file: null }));
+  _pwaFotos = o.fotos ? JSON.parse(JSON.stringify(o.fotos)) : { antes:[], durante:[], despues:[] };
+  document.getElementById('form-title').textContent = 'Editar OT';
+  document.getElementById('form-id').value = id;
+  document.getElementById('form-equipo').value = o.equipo || '';
+  document.getElementById('form-codigo').value = o.codigo || '';
+  document.getElementById('form-proceso').value = o.proceso || '';
+  document.getElementById('form-actividad').value = o.actividad || '';
+  document.getElementById('form-tipo').value = o.tipo || 'Preventivo';
+  document.getElementById('form-prioridad').value = o.prioridad || 'Media';
+  document.getElementById('form-fecha').value = o.fecha || '';
+  document.getElementById('form-estado').value = o.estado || 'Abierta';
+  document.getElementById('form-tecnico').value = o.tecnico || '';
+  document.getElementById('form-autorizado').value = o.autorizado || '';
+  document.getElementById('form-marca').value = o.marca || '';
+  document.getElementById('form-modelo').value = o.modelo || '';
+  document.getElementById('form-ubicacion').value = o.ubicacion || '';
+  document.getElementById('form-hora-inicio').value = o.horaInicio || '';
+  document.getElementById('form-hora-termino').value = o.horaTermino || '';
+  document.getElementById('form-materiales').value = o.materiales || '';
+  document.getElementById('form-duracion').value = o.duracion || '';
+  document.getElementById('form-obs').value = o.obs || '';
+  // Sanitario
+  if(o.sanitario){
+    ['pwa-san1','pwa-san2','pwa-san3','pwa-san4'].forEach((n,i)=>{
+      const val=o.sanitario[i]||'NA';
+      const el=document.querySelector(`input[name="${n}"][value="${val}"]`);
+      if(el) el.checked=true;
+    });
+  }
+  renderActividadesPwa(o.actividades||[]);
+  ['antes','durante','despues'].forEach(t=>renderPwaFotoGrid(t));
+  setPwaFotoTab('antes');
+  renderFormPhotos();
+  closeSheet();
+  setTimeout(() => openSheet('sheet-form'), 300);
+}
+
+async function saveOT() {
+  const equipo = document.getElementById('form-equipo').value;
+  const actividad = document.getElementById('form-actividad').value.trim();
+  if (!equipo) { toast('Selecciona un equipo', true); return; }
+
+  const btn = document.querySelector('#sheet-form .btn-primary');
+  btn.textContent = '⏳ Guardando...'; btn.disabled = true;
+  setSyncStatus('syncing', 'Guardando...');
+
+  // Actividades
+  const actividades = [];
+  document.querySelectorAll('#form-actividades-list .act-row input').forEach(inp=>{
+    if(inp.value.trim()) actividades.push({desc: inp.value.trim()});
+  });
+
+  // Sanitario
+  const sanitario = ['pwa-san1','pwa-san2','pwa-san3','pwa-san4'].map(n=>{
+    return document.querySelector(`input[name="${n}"]:checked`)?.value || 'NA';
+  });
+
+  const otData = {
+    id: _editId || '',
+    num: _editId ? (OTs.find(o=>o.id===_editId)||{}).num || nextNum() : nextNum(),
+    equipo, actividad,
+    codigo: document.getElementById('form-codigo').value,
+    proceso: document.getElementById('form-proceso').value,
+    tipo: document.getElementById('form-tipo').value,
+    prioridad: document.getElementById('form-prioridad').value,
+    fecha: document.getElementById('form-fecha').value,
+    estado: document.getElementById('form-estado').value,
+    tecnico: document.getElementById('form-tecnico').value.trim(),
+    autorizado: document.getElementById('form-autorizado').value.trim(),
+    marca: document.getElementById('form-marca').value.trim(),
+    modelo: document.getElementById('form-modelo').value.trim(),
+    ubicacion: document.getElementById('form-ubicacion').value.trim(),
+    horaInicio: document.getElementById('form-hora-inicio').value,
+    horaTermino: document.getElementById('form-hora-termino').value,
+    materiales: document.getElementById('form-materiales').value.trim(),
+    duracion: parseFloat(document.getElementById('form-duracion').value) || null,
+    obs: document.getElementById('form-obs').value.trim(),
+    actividades,
+    sanitario,
+    fotos: _pwaFotos,
+    photos: [],
+    creado: _editId ? (OTs.find(o=>o.id===_editId)||{}).creado || null : null,
+  };
+
+  try {
+    // Upload new photos
+    let savedPhotos = _formPhotos.filter(p => p.url && !p.file).map(p=>({name:p.name,url:p.url}));
+    const newFiles = _formPhotos.filter(p => p.file);
+    if (newFiles.length && FIREBASE_READY) {
+      const tempId = _editId || ('temp_' + Date.now());
+      const uploads = await Promise.all(newFiles.map(p => uploadPhotoToStorage(p.file, tempId)));
+      uploads.forEach(r => { if (r) savedPhotos.push(r); });
+    } else if (newFiles.length) {
+      // store as dataURL locally
+      savedPhotos.push(...newFiles.filter(p=>p.dataURL).map(p=>({name:p.name,url:'',dataURL:p.dataURL})));
+    }
+    otData.photos = savedPhotos;
+
+    if (FIREBASE_READY) {
+      const newId = await saveOTToFirestore(otData);
+      if (!_editId) otData.id = newId;
+      setSyncStatus('online', 'Sincronizado ✓');
+    } else {
+      if (!_editId) {
+        otData.id = 'local_' + Date.now();
+        OTs.unshift(otData);
+      } else {
+        const idx = OTs.findIndex(o=>o.id===_editId);
+        if (idx>=0) OTs[idx] = {...OTs[idx], ...otData};
+      }
+      saveLocal();
+      setSyncStatus('offline', 'Guardado local');
+      renderAll();
+      populateCamOTSelect();
+    }
+
+    closeSheet();
+    toast(_editId ? '✔ OT actualizada' : '✔ OT creada: ' + otData.num);
+  } catch(e) {
+    console.error(e);
+    toast('Error al guardar: ' + e.message, true);
+    setSyncStatus('offline', 'Error');
+  } finally {
+    btn.textContent = '💾 Guardar'; btn.disabled = false;
+  }
+}
+
+async function deleteOT(id) {
+  if (!confirm('¿Eliminar esta OT?')) return;
+  try {
+    if (FIREBASE_READY) await deleteOTFromFirestore(id);
+    else { OTs = OTs.filter(o=>o.id!==id); saveLocal(); renderAll(); populateCamOTSelect(); }
+    closeSheet();
+    toast('🗑 OT eliminada');
+  } catch(e) { toast('Error al eliminar', true); }
+}
+
+// ═══════════════════════════════════════════════════════
+// FORM PHOTOS
+// ═══════════════════════════════════════════════════════
+// ── FOTOS POR ETAPA PWA ──
+let _pwaFotos = { antes:[], durante:[], despues:[] };
+
+function setPwaFotoTab(tab){
+  ['antes','durante','despues'].forEach(t=>{
+    const btn=document.getElementById(`pwa-tab-${t}`);
+    const zona=document.getElementById(`pwa-zona-${t}`);
+    if(!btn||!zona) return;
+    if(t===tab){
+      zona.style.display='block';
+      btn.style.opacity='1';
+      const cols={antes:'rgba(255,69,96,.15)',durante:'rgba(255,193,7,.15)',despues:'rgba(0,230,118,.15)'};
+      const bords={antes:'rgba(255,69,96,.4)',durante:'rgba(255,193,7,.4)',despues:'rgba(0,230,118,.4)'};
+      const txts={antes:'#ff4560',durante:'#ffc107',despues:'#00e676'};
+      btn.style.background=cols[t]; btn.style.borderColor=bords[t]; btn.style.color=txts[t];
+    } else {
+      zona.style.display='none';
+      btn.style.background='transparent'; btn.style.borderColor='rgba(255,255,255,.1)'; btn.style.color='#888';
+    }
+  });
+}
+
+function addPwaFotos(e, tab){
+  const files=Array.from(e.target.files);
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      if(!_pwaFotos[tab]) _pwaFotos[tab]=[];
+      _pwaFotos[tab].push({name:file.name, dataURL:ev.target.result, file});
+      renderPwaFotoGrid(tab);
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value='';
+}
+
+function renderPwaFotoGrid(tab){
+  const grid=document.getElementById(`pwa-grid-${tab}`);
+  if(!grid) return;
+  const fotos=_pwaFotos[tab]||[];
+  if(!fotos.length){ grid.innerHTML='<div class="photo-empty">Sin fotos</div>'; return; }
+  grid.innerHTML=fotos.map((p,i)=>`
+    <div class="photo-thumb" style="position:relative;">
+      <img src="${p.dataURL||p.url}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;">
+      <button onclick="removePwaFoto('${tab}',${i})" style="position:absolute;top:2px;right:2px;background:rgba(255,0,0,.8);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;">×</button>
+    </div>`).join('');
+}
+
+function removePwaFoto(tab,i){ _pwaFotos[tab].splice(i,1); renderPwaFotoGrid(tab); }
+
+// ── ACTIVIDADES PWA ──
+function renderActividadesPwa(data){
+  const list=document.getElementById('form-actividades-list');
+  if(!list) return;
+  const rows=Math.max(4,(data||[]).length+1);
+  list.innerHTML=Array.from({length:rows},(_,i)=>{
+    const d=(data||[])[i]||{};
+    return `<div class="act-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);${i%2?'background:rgba(255,255,255,.02)':''}">
+      <span style="color:#4a6080;font-size:11px;min-width:20px;text-align:center;">${i+1}</span>
+      <input type="text" value="${d.desc||''}" placeholder="Describe la actividad..."
+        style="flex:1;background:transparent;border:none;color:var(--text);font-size:13px;outline:none;padding:4px;">
+    </div>`;
+  }).join('');
+}
+
+function addFormPhotos(e) {
+  const files = Array.from(e.target.files);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      _formPhotos.push({ name: file.name, dataURL: ev.target.result, file, url: '' });
+      renderFormPhotos();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function removeFormPhoto(i) { _formPhotos.splice(i, 1); renderFormPhotos(); }
+
+function renderFormPhotos() {
+  const grid = document.getElementById('form-photo-grid');
+  if (!_formPhotos.length) { grid.innerHTML = '<div class="photo-empty">Sin fotos</div>'; return; }
+  grid.innerHTML = _formPhotos.map((p, i) => `
+    <div class="photo-item">
+      <img src="${p.dataURL || p.url || ''}" alt="${p.name}" onerror="this.style.display='none'">
+      <button class="rm-btn" onclick="removeFormPhoto(${i})">×</button>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// CÁMARA PAGE
+// ═══════════════════════════════════════════════════════
+function populateCamOTSelect() {
+  const sel = document.getElementById('cam-ot-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Seleccionar OT —</option>';
+  OTs.filter(o=>o.estado!=='Cerrada').forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.id;
+    opt.textContent = `${o.num||o.id} — ${o.equipo||'?'}`;
+    if (o.id === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function camOTSelected() {
+  const id = document.getElementById('cam-ot-select').value;
+  const info = document.getElementById('cam-ot-info');
+  if (!id) { info.style.display = 'none'; return; }
+  const o = OTs.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('cam-ot-detail').innerHTML = `
+    <div class="det-row">
+      <div class="det-item"><div class="dk">Equipo</div><div class="dv">${o.equipo||'—'}</div></div>
+      <div class="det-item"><div class="dk">Estado</div><div class="dv">${stBadge(o.estado)}</div></div>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:var(--text)">${(o.actividad||'').substring(0,120)}</div>`;
+  info.style.display = 'block';
+}
+
+function camPhotoSelected(e) {
+  const files = Array.from(e.target.files);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      _camPhotos.push({ name: file.name, dataURL: ev.target.result, file });
+      renderCamPhotos();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function renderCamPhotos() {
+  const grid = document.getElementById('cam-photo-grid');
+  document.getElementById('cam-previews').style.display = _camPhotos.length ? 'block' : 'none';
+  document.getElementById('cam-photo-count').textContent = _camPhotos.length + ' foto(s)';
+  grid.innerHTML = _camPhotos.map((p, i) => `
+    <div class="photo-item">
+      <img src="${p.dataURL}" alt="${p.name}">
+      <button class="rm-btn" onclick="removeCamPhoto(${i})">×</button>
+    </div>`).join('');
+}
+function removeCamPhoto(i) { _camPhotos.splice(i, 1); renderCamPhotos(); }
+function clearCamPhotos() { _camPhotos = []; renderCamPhotos(); }
+
+async function saveCamPhotos() {
+  const otId = document.getElementById('cam-ot-select').value;
+  const obs = document.getElementById('cam-obs').value.trim();
+  if (!otId) { toast('Selecciona una OT primero', true); return; }
+  if (!_camPhotos.length) { toast('Agrega al menos una foto', true); return; }
+
+  const btn = document.getElementById('cam-save-btn');
+  btn.textContent = '⏳ Subiendo...'; btn.disabled = true;
+
+  const o = OTs.find(x => x.id === otId);
+  if (!o) { toast('OT no encontrada', true); btn.textContent='💾 Guardar registro'; btn.disabled=false; return; }
+
+  try {
+    let newPhotos = [];
+    if (FIREBASE_READY) {
+      const uploads = await Promise.all(_camPhotos.map(p => uploadPhotoToStorage(p.file, otId)));
+      newPhotos = uploads.filter(Boolean);
+    } else {
+      newPhotos = _camPhotos.map(p => ({ name: p.name, url: '', dataURL: p.dataURL }));
+    }
+
+    const updated = {
+      ...o,
+      photos: [...(o.photos||[]), ...newPhotos],
+      obs: obs ? (o.obs ? o.obs + '\n' + obs : obs) : o.obs,
+      estado: 'En Progreso',
+    };
+
+    if (FIREBASE_READY) {
+      await saveOTToFirestore(updated);
+    } else {
+      const idx = OTs.findIndex(x=>x.id===otId);
+      if (idx>=0) OTs[idx] = updated;
+      saveLocal(); renderAll();
+    }
+
+    toast(`✔ ${newPhotos.length} foto(s) registradas`);
+    _camPhotos = [];
+    document.getElementById('cam-obs').value = '';
+    renderCamPhotos();
+    document.getElementById('cam-ot-select').value = '';
+    document.getElementById('cam-ot-info').style.display = 'none';
+  } catch(e) {
+    toast('Error al subir fotos: ' + e.message, true);
+  } finally {
+    btn.textContent = '💾 Guardar registro'; btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════
+function exportAllExcel() {
+  if (!OTs.length) { toast('Sin datos', true); return; }
+  const wb = XLSX.utils.book_new();
+  const h = ['N° OT','Equipo','Código','Proceso','Actividad','Tipo','Prioridad','Técnico','Fecha','Estado','Materiales','Obs','Fotos'];
+  const rows = OTs.map(o=>[
+    o.num||o.id, o.equipo||'', o.codigo||'', o.proceso||'',
+    o.actividad||'', o.tipo||'', o.prioridad||'', o.tecnico||'',
+    o.fecha||'', o.estado||'', o.materiales||'', o.obs||'',
+    (o.photos||[]).length
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([h,...rows]);
+  ws['!cols'] = [10,24,8,16,40,12,10,16,10,12,24,28,6].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'OT');
+  XLSX.writeFile(wb, 'OT_MantePro_2026.xlsx');
+  toast('📊 Excel descargado');
+}
+
+function exportOnePDF(id) {
+  const o = OTs.find(x=>x.id===id);
+  if (!o) return;
+  exportPDFList([o]);
+}
+function exportAllPDF() { exportPDFList(OTs); }
+
+function exportPDFList(list) {
+  if (!list.length) { toast('Sin datos', true); return; }
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210, M=14; let y=0;
+
+  function pgH(){
+    doc.setFillColor(6,13,26); doc.rect(0,0,W,14,'F');
+    doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(0,200,255);
+    doc.text('⚙ MantePro 2026 — Órdenes de Trabajo',M,9);
+    doc.setTextColor(74,106,144);
+    doc.text(new Date().toLocaleDateString('es-CL'),W-M,9,{align:'right'});
+    y=20;
+  }
+  function chk(n){if(y+n>283){doc.addPage();pgH();}}
+
+  // Cover
+  doc.setFillColor(6,13,26); doc.rect(0,0,W,297,'F');
+  doc.setFillColor(0,200,255); doc.rect(0,90,W,3,'F');
+  doc.setFontSize(28); doc.setFont('helvetica','bold'); doc.setTextColor(0,200,255);
+  doc.text('ÓRDENES DE',M,76); doc.text('TRABAJO 2026',M,90);
+  doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.setTextColor(74,106,144);
+  doc.text('MantePro — Plan de Mantenimiento Industrial',M,104);
+  doc.text(list.length+' OT · Generado: '+new Date().toLocaleString('es-CL'),M,113);
+
+  list.forEach(o=>{
+    doc.addPage(); pgH();
+    doc.setFillColor(15,30,53); doc.rect(M,y,W-M*2,14,'F');
+    doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(0,200,255);
+    doc.text(o.num||o.id,M+3,y+9);
+    doc.setFontSize(9); doc.setTextColor(200,220,240);
+    doc.text((o.equipo||'').substring(0,38),M+28,y+9);
+    const sc={Abierta:[255,193,7],'En Progreso':[0,200,255],Cerrada:[0,230,118],Cancelada:[255,69,96]};
+    const c=sc[o.estado]||[150,150,150];
+    doc.setFillColor(...c); doc.roundedRect(W-M-24,y+3,22,8,2,2,'F');
+    doc.setFontSize(6); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+    doc.text((o.estado||'').substring(0,11),W-M-13,y+8.5,{align:'center'});
+    y+=18;
+
+    const row=(l,v,x,w2)=>{
+      doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(74,106,144);
+      doc.text(l.toUpperCase(),x,y);
+      doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(180,210,240);
+      doc.text(String(v||'—').substring(0,w2||40),x,y+5);
+    };
+    chk(14); row('Proceso',o.proceso||'—',M); row('Tipo',o.tipo||'—',M+42);
+    row('Prioridad',o.prioridad||'—',M+68); row('Técnico',o.tecnico||'—',M+96); y+=14;
+    chk(14); row('Fecha',o.fecha||'—',M); row('Duración',o.duracion?o.duracion+'h':'—',M+36); y+=14;
+
+    if(o.actividad){
+      chk(18); doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(74,106,144);
+      doc.text('ACTIVIDAD',M,y); y+=5;
+      const lines=doc.splitTextToSize(o.actividad,W-M*2);
+      doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(180,210,240);
+      chk(lines.length*5+4); doc.text(lines,M,y); y+=lines.length*5+5;
+    }
+    if(o.obs){
+      chk(18); doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(74,106,144);
+      doc.text('OBSERVACIONES',M,y); y+=5;
+      const lines=doc.splitTextToSize(o.obs,W-M*2);
+      doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(180,210,240);
+      chk(lines.length*5+4); doc.text(lines,M,y); y+=lines.length*5+5;
+    }
+    const photos=(o.photos||[]).filter(p=>p.url||p.dataURL);
+    if(photos.length){
+      chk(12); doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(74,106,144);
+      doc.text(`FOTOS (${photos.length})`,M,y); y+=6;
+      const pw=54,ph=42,per=3; let px=M;
+      photos.forEach((p,i)=>{
+        if(i>0&&i%per===0){px=M;y+=ph+8;}
+        chk(ph+10);
+        const src=p.dataURL||p.url;
+        if(src){try{doc.addImage(src,src.includes('png')?'PNG':'JPEG',px,y,pw,ph);}catch(e){doc.setFillColor(15,30,53);doc.rect(px,y,pw,ph,'F');}}
+        else{doc.setFillColor(15,30,53);doc.rect(px,y,pw,ph,'F');}
+        doc.setFontSize(6);doc.setTextColor(74,106,144);
+        doc.text((p.name||'').substring(0,18),px,y+ph+4);
+        px+=pw+5;
+      });
+      y+=ph+12;
+    }
+    y=Math.max(y+4,254); chk(20);
+    doc.setDrawColor(23,37,64);
+    doc.line(M,y,M+58,y); doc.line(W-M-58,y,W-M,y);
+    doc.setFontSize(7); doc.setTextColor(74,106,144);
+    doc.text('Firma Técnico',M+29,y+5,{align:'center'});
+    doc.text('Firma Supervisor',W-M-29,y+5,{align:'center'});
+  });
+  doc.save('OT_MantePro_'+new Date().toISOString().slice(0,10)+'.pdf');
+  toast('📄 PDF descargado');
+}
+
+// ═══════════════════════════════════════════════════════
+// SHEET CONTROL
+// ═══════════════════════════════════════════════════════
+function openSheet(id) {
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));
+  document.getElementById('sheet-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById(id).classList.add('open'),10);
+  document.body.style.overflow='hidden';
+}
+function closeSheet() {
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));
+  document.getElementById('sheet-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+// ═══════════════════════════════════════════════════════
+// PAGE NAV
+// ═══════════════════════════════════════════════════════
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  document.getElementById('main').scrollTop = 0;
+  const fab = document.getElementById('fab-btn');
+  fab.style.display = (id==='inicio'||id==='ots') ? 'flex' : 'none';
+  if (id === 'ots') renderOTsList();
+}
+
+// ═══════════════════════════════════════════════════════
+// FIREBASE CONFIG UI
+// ═══════════════════════════════════════════════════════
+function loadFirebaseConfigUI() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem('mantepro_fb_config') || '{}');
+    if (cfg.apiKey) document.getElementById('cfg-apikey').value = cfg.apiKey;
+    if (cfg.projectId) document.getElementById('cfg-projectid').value = cfg.projectId;
+    if (cfg.storageBucket) document.getElementById('cfg-bucket').value = cfg.storageBucket;
+    if (cfg.appId) document.getElementById('cfg-appid').value = cfg.appId;
+  } catch(e) {}
+}
+function saveFirebaseConfig() {
+  const cfg = {
+    apiKey: document.getElementById('cfg-apikey').value.trim(),
+    projectId: document.getElementById('cfg-projectid').value.trim(),
+    storageBucket: document.getElementById('cfg-bucket').value.trim(),
+    appId: document.getElementById('cfg-appid').value.trim(),
+  };
+  localStorage.setItem('mantepro_fb_config', JSON.stringify(cfg));
+  toast('✔ Configuración guardada — recarga la app para conectar');
+}
+function showInstallGuide() { openSheet('sheet-install'); }
+function clearLocalData() {
+  if (!confirm('¿Limpiar todos los datos locales?')) return;
+  localStorage.removeItem('mantepro_ots_pwa');
+  OTs = []; renderAll(); toast('🗑 Datos locales eliminados');
+}
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
+function toast(msg, err) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (err?' err':'') + ' show';
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.remove('show'), 2600);
+}
+
+// ═══════════════════════════════════════════════════════
+// SERVICE WORKER REGISTER
+// ═══════════════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
