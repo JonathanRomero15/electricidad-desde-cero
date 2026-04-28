@@ -24,12 +24,13 @@
   // 🔥 CONFIGURACIÓN FIREBASE — REEMPLAZA ESTOS VALORES
   // ══════════════════════════════════════════════════
   const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "TU_PROJECT.firebaseapp.com",
-    projectId: "TU_PROJECT_ID",
-    storageBucket: "TU_PROJECT.appspot.com",
-    messagingSenderId: "TU_SENDER_ID",
-    appId: "TU_APP_ID"
+    apiKey: "AIzaSyDi_tdpNOlO8xmWVsTEstx34uNAu2PBmTs",
+    authDomain: "mantepro-2026-21deb.firebaseapp.com",
+    projectId: "mantepro-2026-21deb",
+    storageBucket: "mantepro-2026-21deb.firebasestorage.app",
+    messagingSenderId: "919735708941",
+    appId: "1:919735708941:web:b1b04bf336a9725e3e9444",
+    measurementId: "G-HRH7SQ7BR6"
   };
   // ══════════════════════════════════════════════════
 
@@ -1788,7 +1789,18 @@ function saveFirebaseConfig() {
     appId: document.getElementById('cfg-appid').value.trim(),
   };
   localStorage.setItem('mantepro_fb_config', JSON.stringify(cfg));
-  toast('✔ Configuración guardada — recarga la app para conectar');
+  toast('✔ Guardado — recargando...');
+  // Forzar recarga limpia ignorando caché
+  setTimeout(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister());
+        window.location.reload(true);
+      });
+    } else {
+      window.location.reload(true);
+    }
+  }, 800);
 }
 function showInstallGuide() { openSheet('sheet-install'); }
 function clearLocalData() {
