@@ -3318,10 +3318,12 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDzlRf0IFqBhwgH_LurbmvkChO5xGV7Y5M",
-  authDomain: "mantepro-sal.firebaseapp.com",
-  projectId: "mantepro-sal",
-  storageBucket: "mantepro-sal.firebasestorage.app",
+  apiKey: "AIzaSyDi_tdpNOlO8xmWVsTEstx34uNAu2PBmTs",
+  authDomain: "mantepro-2026-21deb.firebaseapp.com",
+  projectId: "mantepro-2026-21deb",
+  storageBucket: "mantepro-2026-21deb.firebasestorage.app",
+  messagingSenderId: "919735708941",
+  appId: "1:919735708941:web:b1b04bf336a9725e3e9444"
   messagingSenderId: "442406182161",
   appId: "1:442406182161:web:ba4be6ac1599a7c0b800b0"
 };
@@ -3373,35 +3375,64 @@ onSnapshot(q, (snap) => {
 window.pushOTToFirebase = async function(ot) {
   try {
     const { id, ...data } = ot;
+    // Limpiar campos undefined
+    Object.keys(data).forEach(k => data[k] === undefined && delete data[k]);
+    // Limpiar fotos con dataURL para no superar límite Firestore
+    if(data.fotos){
+      ['antes','durante','despues'].forEach(t=>{
+        if(data.fotos[t]) data.fotos[t] = data.fotos[t].map(f=>({name:f.name||'foto'}));
+      });
+    }
     data.actualizado = serverTimestamp();
-    if (id && id.length > 5 && !id.startsWith('OT-')) {
+    // Si tiene ID de Firestore (largo alfanumérico, no empieza con OT-)
+    if (id && id.length > 10 && !id.startsWith('OT-') && !/^\d{13}$/.test(id)) {
       await updateDoc(doc(db, 'ordenes', id), data);
+      console.log('OT actualizada en Firebase:', id);
     } else {
       data.creado = serverTimestamp();
       const ref = await addDoc(collection(db, 'ordenes'), data);
+      console.log('OT creada en Firebase:', ref.id);
+      // Actualizar el ID local con el ID de Firebase
+      const idx = OTs.findIndex(o => o.id === id || o.num === ot.num);
+      if(idx >= 0) {
+        OTs[idx].id = ref.id;
+        localStorage.setItem('mant_ots_2026', JSON.stringify(OTs));
+      }
       return ref.id;
     }
-  } catch(e) { console.error('Push error:', e); }
+  } catch(e) {
+    console.error('Push Firebase error:', e);
+    toast('⚠ Error al sincronizar con Firebase: ' + e.message, true);
+  }
 };
 
-// ── Hook into existing guardarOT ──
+// ── Hook guardarOT → Firebase ──
 const _origGuardarOT = window.guardarOT;
 if (_origGuardarOT) {
   window.guardarOT = async function() {
+    const editId = document.getElementById('ot-edit-id')?.value || '';
     _origGuardarOT();
-    // Push the latest OT to Firebase after saving
     setTimeout(async () => {
-      const lastOT = OTs[0];
-      if (lastOT) {
+      try {
         setSyncBadge('syncing');
-        await window.pushOTToFirebase(lastOT);
-        setSyncBadge('online');
+        // Buscar la OT que se acaba de guardar
+        const ot = editId
+          ? OTs.find(o => o.id === editId)
+          : OTs[0];
+        if (ot) {
+          await window.pushOTToFirebase(ot);
+          setSyncBadge('online');
+          toast('✔ OT sincronizada con Firebase');
+        }
+      } catch(e) {
+        setSyncBadge('offline');
+        console.error('Sync error:', e);
       }
-    }, 300);
+    }, 400);
   };
 }
 
-console.log('Firebase conectado: mantepro-sal');
+console.log('Firebase conectado: mantepro-2026');
 </script>
 </body>
 </html>
