@@ -3363,67 +3363,52 @@ function setSyncBadge(state) {
 
 setSyncBadge('syncing');
 
-// ── LISTEN for OT changes from phone ──
+// ════════════════════════════════════════════
+// FIREBASE — mantepro-2026
+// ════════════════════════════════════════════
 const q = query(collection(db, 'ordenes'), orderBy('creado', 'desc'));
+
+// Escuchar cambios en tiempo real desde Firebase
 onSnapshot(q, (snap) => {
   const firebaseOTs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  // Merge Firebase OTs with local OTs array
-  if (typeof OTs !== 'undefined') {
-    // Add Firebase OTs that aren't in local
-    firebaseOTs.forEach(fot => {
-      const exists = OTs.find(o => o.id === fot.id || o.num === fot.num);
-      if (!exists) OTs.unshift(fot);
-      else {
-        const idx = OTs.findIndex(o => o.id === fot.id);
-        if (idx >= 0) OTs[idx] = { ...OTs[idx], ...fot };
-      }
-    });
-    if (typeof renderOTs === 'function') renderOTs();
-    if (typeof updateOTStats === 'function') updateOTStats();
+  if(firebaseOTs.length > 0){
+    // Reemplazar OTs con los de Firebase (fuente de verdad)
+    OTs = firebaseOTs;
+    localStorage.setItem('mant_ots_2026', JSON.stringify(OTs));
+    if(typeof renderOTs === 'function') renderOTs();
+    if(typeof updateOTStats === 'function') updateOTStats();
   }
   setSyncBadge('online');
-  console.log('Firebase sync: ' + firebaseOTs.length + ' OTs');
 }, (err) => {
   setSyncBadge('offline');
-  console.error('Firebase error:', err);
+  console.error('Firebase listener error:', err.code, err.message);
 });
 
-// ── PUSH new/updated OT to Firebase ──
+// Guardar OT en Firebase (crear o actualizar)
 window.pushOTToFirebase = async function(ot) {
-  try {
-    const { id, ...data } = ot;
-    // Limpiar campos undefined
-    Object.keys(data).forEach(k => data[k] === undefined && delete data[k]);
-    // Limpiar fotos con dataURL para no superar límite Firestore
-    if(data.fotos){
-      ['antes','durante','despues'].forEach(t=>{
-        if(data.fotos[t]) data.fotos[t] = data.fotos[t].map(f=>({name:f.name||'foto'}));
-      });
-    }
-    data.actualizado = serverTimestamp();
-    // Si tiene ID de Firestore (largo alfanumérico, no empieza con OT-)
-    if (id && id.length > 10 && !id.startsWith('OT-') && !/^\d{13}$/.test(id)) {
-      await updateDoc(doc(db, 'ordenes', id), data);
-      console.log('OT actualizada en Firebase:', id);
-    } else {
-      data.creado = serverTimestamp();
-      const ref = await addDoc(collection(db, 'ordenes'), data);
-      console.log('OT creada en Firebase:', ref.id);
-      // Actualizar el ID local con el ID de Firebase
-      const idx = OTs.findIndex(o => o.id === id || o.num === ot.num);
-      if(idx >= 0) {
-        OTs[idx].id = ref.id;
-        localStorage.setItem('mant_ots_2026', JSON.stringify(OTs));
-      }
-      return ref.id;
-    }
-  } catch(e) {
-    console.error('Push Firebase error:', e);
-    toast('⚠ Error al sincronizar con Firebase: ' + e.message, true);
+  const { id, fotos, ...data } = ot;
+  // Limpiar datos para Firestore (sin base64)
+  Object.keys(data).forEach(k => {
+    if(data[k] === undefined || data[k] === null) delete data[k];
+  });
+  data.actualizado = serverTimestamp();
+
+  // Tiene ID de Firestore si es alfanumérico largo
+  const esFirebaseId = id && id.length > 15 && !/^\d+$/.test(id);
+
+  if(esFirebaseId){
+    await updateDoc(doc(db, 'ordenes', id), data);
+    console.log('✅ OT actualizada Firebase:', id);
+    return id;
+  } else {
+    if(!data.creado) data.creado = serverTimestamp();
+    const ref = await addDoc(collection(db, 'ordenes'), data);
+    console.log('✅ OT creada Firebase:', ref.id);
+    return ref.id;
   }
 };
 
-console.log('Firebase conectado: mantepro-2026');
+console.log('🔥 Firebase conectado: mantepro-2026');
 </script>
 </body>
 </html>
