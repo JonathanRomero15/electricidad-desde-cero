@@ -1925,21 +1925,29 @@ async function guardarOT(){
   toast('✔ OT guardada: ' + ot.num);
 
   // ── Sincronizar con Firebase ──
-  if(typeof window.pushOTToFirebase === 'function'){
-    try {
-      setSyncBadge('syncing');
-      const newId = await window.pushOTToFirebase(ot);
-      if(newId && !editId){
-        OTs[0].id = newId;
-        localStorage.setItem('mant_ots_2026', JSON.stringify(OTs));
+  const doSync = async () => {
+    if(typeof window.pushOTToFirebase === 'function'){
+      try {
+        setSyncBadge('syncing');
+        const newId = await window.pushOTToFirebase(ot);
+        if(newId && !editId){
+          OTs[0].id = newId;
+          localStorage.setItem('mant_ots_2026', JSON.stringify(OTs));
+        }
+        setSyncBadge('online');
+        toast('☁ Sincronizado con Firebase');
+      } catch(e){
+        setSyncBadge('offline');
+        toast('⚠ Error Firebase: ' + (e.message||e.code||e), true);
+        console.error('Firebase sync error:', e);
       }
-      setSyncBadge('online');
-      toast('☁ Sincronizado con Firebase');
-    } catch(e){
-      setSyncBadge('offline');
-      console.error('Firebase sync error:', e);
+    } else {
+      toast('⚠ Firebase no disponible aún', true);
+      console.warn('pushOTToFirebase no está definido');
     }
-  }
+  };
+  // Esperar 800ms para que el módulo Firebase esté listo
+  setTimeout(doSync, 800);
 }
 
 function crearOTDesde(a){
@@ -3409,6 +3417,8 @@ window.pushOTToFirebase = async function(ot) {
 };
 
 console.log('🔥 Firebase conectado: mantepro-2026');
+window._firebaseReady = true;
+window.dispatchEvent(new Event('firebase-ready'));
 </script>
 </body>
 </html>
