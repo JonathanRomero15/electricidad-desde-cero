@@ -3345,10 +3345,10 @@ renderFichas();
 iniciarSistemaAlarmas();
 </script>
 
-<!-- ═══ FIREBASE SYNC ═══ -->
+<!-- ═══ FIREBASE SYNC + FOTOS EN SUBCOLECCIÓN ═══ -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, addDoc, updateDoc, setDoc, getDocs, deleteDoc, onSnapshot, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDi_tdpNOlO8xmWVsTEstx34uNAu2PBmTs",
@@ -3356,15 +3356,16 @@ const firebaseConfig = {
   projectId: "mantepro-2026-21deb",
   storageBucket: "mantepro-2026-21deb.firebasestorage.app",
   messagingSenderId: "919735708941",
-  appId: "1:919735708941:web:b1b04bf336a9725e3e9444"
-  messagingSenderId: "442406182161",
-  appId: "1:442406182161:web:ba4be6ac1599a7c0b800b0"
+  appId: "1:919735708941:web:b1b04bf336a9725e3e9444",
+  measurementId: "G-HRH7SQ7BR6"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db  = getFirestore(app);
 
-// ── SYNC INDICATOR ──
+// ══════════════════════════════════════════
+// SYNC INDICATOR
+// ══════════════════════════════════════════
 function setSyncBadge(state) {
   let badge = document.getElementById('fb-sync-badge');
   if (!badge) {
@@ -3379,20 +3380,120 @@ function setSyncBadge(state) {
 
 setSyncBadge('syncing');
 
-// ════════════════════════════════════════════
-// FIREBASE — mantepro-2026
-// ════════════════════════════════════════════
+// ══════════════════════════════════════════
+// COMPRIMIR IMAGEN antes de guardar
+// Reduce a max 900px y calidad 0.65
+// ══════════════════════════════════════════
+function comprimirImagen(dataURL, maxPx = 900, calidad = 0.65) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else { width = Math.round(width * maxPx / height); height = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', calidad));
+    };
+    img.onerror = () => resolve(dataURL); // si falla, usar original
+    img.src = dataURL;
+  });
+}
+
+// ══════════════════════════════════════════
+// GUARDAR FOTOS EN SUBCOLECCIÓN
+// ordenes/{otId}/fotos/{fotoId}
+// Cada documento = 1 foto comprimida (~50-100KB)
+// ══════════════════════════════════════════
+async function guardarFotosSubcoleccion(otId, fotosObj) {
+  if (!fotosObj) return;
+  const fotosCol = collection(db, 'ordenes', otId, 'fotos');
+
+  // Borrar fotos previas si las hay (para no duplicar en edición)
+  const prevSnap = await getDocs(fotosCol);
+  const borrados = prevSnap.docs.map(d => deleteDoc(d.ref));
+  await Promise.all(borrados);
+
+  // Subir fotos nuevas
+  let contador = 0;
+  for (const etapa of ['antes', 'durante', 'despues']) {
+    const lista = fotosObj[etapa] || [];
+    for (const foto of lista) {
+      if (!foto.dataURL) continue; // ya estaba en Firebase, sin dataURL nueva
+      const dataComprimida = await comprimirImagen(foto.dataURL);
+      const fotoDoc = {
+        etapa,
+        name: foto.name || `foto_${contador}.jpg`,
+        dataURL: dataComprimida,
+        ts: serverTimestamp()
+      };
+      await addDoc(fotosCol, fotoDoc);
+      contador++;
+      console.log(`📷 Foto guardada en subcolección: ${etapa}/${foto.name}`);
+    }
+  }
+  console.log(`✅ Total fotos guardadas: ${contador}`);
+}
+
+// ══════════════════════════════════════════
+// CARGAR FOTOS DESDE SUBCOLECCIÓN
+// ══════════════════════════════════════════
+async function cargarFotosSubcoleccion(otId) {
+  try {
+    const fotosCol = collection(db, 'ordenes', otId, 'fotos');
+    const snap = await getDocs(query(fotosCol, orderBy('ts')));
+    const fotos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Llenar _otPhotosCache (formato que usa la tabla)
+    _otPhotosCache[otId] = fotos.map(f => ({
+      name: `[${f.etapa}] ${f.name}`,
+      dataURL: f.dataURL
+    }));
+
+    // Llenar _curFotos por etapa (formato que usa el modal)
+    const curFotos = { antes: [], durante: [], despues: [] };
+    fotos.forEach(f => {
+      if (curFotos[f.etapa]) curFotos[f.etapa].push({ name: f.name, dataURL: f.dataURL });
+    });
+
+    // Si esta OT está abierta en el modal, actualizar _curFotos
+    if (window._editingOTId === otId) {
+      _curFotos = curFotos;
+      ['antes','durante','despues'].forEach(t => {
+        if (typeof renderFotoPreview === 'function') renderFotoPreview(t);
+      });
+    }
+
+    if (typeof renderOTs === 'function') renderOTs();
+    return curFotos;
+  } catch(e) {
+    console.error('Error cargando fotos:', e);
+    return { antes: [], durante: [], despues: [] };
+  }
+}
+
+// ══════════════════════════════════════════
+// ESCUCHAR OTs EN TIEMPO REAL
+// ══════════════════════════════════════════
 const q = query(collection(db, 'ordenes'), orderBy('creado', 'desc'));
 
-// Escuchar cambios en tiempo real desde Firebase
-onSnapshot(q, (snap) => {
+onSnapshot(q, async (snap) => {
   const firebaseOTs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  if(firebaseOTs.length > 0){
-    // Reemplazar OTs con los de Firebase (fuente de verdad)
+  if (firebaseOTs.length > 0) {
     OTs = firebaseOTs;
     localStorage.setItem('mant_ots_2026', JSON.stringify(OTs));
-    if(typeof renderOTs === 'function') renderOTs();
-    if(typeof updateOTStats === 'function') updateOTStats();
+    if (typeof renderOTs === 'function') renderOTs();
+    if (typeof updateOTStats === 'function') updateOTStats();
+
+    // Cargar fotos de cada OT que tenga fotos en subcolección
+    for (const ot of firebaseOTs) {
+      if (ot.tieneFotos) {
+        await cargarFotosSubcoleccion(ot.id);
+      }
+    }
   }
   setSyncBadge('online');
 }, (err) => {
@@ -3400,31 +3501,57 @@ onSnapshot(q, (snap) => {
   console.error('Firebase listener error:', err.code, err.message);
 });
 
-// Guardar OT en Firebase (crear o actualizar)
+// ══════════════════════════════════════════
+// GUARDAR OT + FOTOS EN FIREBASE
+// ══════════════════════════════════════════
 window.pushOTToFirebase = async function(ot) {
   const { id, fotos, ...data } = ot;
-  // Limpiar datos para Firestore (sin base64)
+
+  // Limpiar undefined/null
   Object.keys(data).forEach(k => {
-    if(data[k] === undefined || data[k] === null) delete data[k];
+    if (data[k] === undefined || data[k] === null) delete data[k];
   });
   data.actualizado = serverTimestamp();
 
-  // Tiene ID de Firestore si es alfanumérico largo
-  const esFirebaseId = id && id.length > 15 && !/^\d+$/.test(id);
+  // Revisar si hay fotos nuevas para subir
+  const fotosActuales = window._curFotos || fotos;
+  const hayFotosNuevas = fotosActuales &&
+    Object.values(fotosActuales).some(arr => arr.some(f => f.dataURL && f.dataURL.startsWith('data:')));
 
-  if(esFirebaseId){
+  // Marcar en el documento principal si tiene fotos (para saber si cargar subcolección)
+  if (hayFotosNuevas || fotos) data.tieneFotos = true;
+
+  // ── Determinar ID Firestore ──
+  const esFirebaseId = id && id.length > 15 && !/^\d+$/.test(id);
+  let otId = esFirebaseId ? id : null;
+
+  if (esFirebaseId) {
     await updateDoc(doc(db, 'ordenes', id), data);
-    console.log('✅ OT actualizada Firebase:', id);
-    return id;
+    otId = id;
+    console.log('✅ OT actualizada Firebase:', otId);
   } else {
-    if(!data.creado) data.creado = serverTimestamp();
+    if (!data.creado) data.creado = serverTimestamp();
     const ref = await addDoc(collection(db, 'ordenes'), data);
-    console.log('✅ OT creada Firebase:', ref.id);
-    return ref.id;
+    otId = ref.id;
+    console.log('✅ OT creada Firebase:', otId);
   }
+
+  // ── Guardar fotos en subcolección si hay nuevas ──
+  if (hayFotosNuevas) {
+    setSyncBadge('syncing');
+    await guardarFotosSubcoleccion(otId, fotosActuales);
+    await cargarFotosSubcoleccion(otId);
+    setSyncBadge('online');
+    console.log('📷 Fotos sincronizadas en subcolección');
+  }
+
+  return otId;
 };
 
-console.log('🔥 Firebase conectado: mantepro-2026');
+// Exponer cargarFotosSubcoleccion globalmente para uso en modal
+window.cargarFotosSubcoleccion = cargarFotosSubcoleccion;
+
+console.log('🔥 Firebase conectado: mantepro-2026 (fotos en subcolección)');
 window._firebaseReady = true;
 window.dispatchEvent(new Event('firebase-ready'));
 </script>
