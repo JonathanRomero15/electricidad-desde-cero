@@ -1864,7 +1864,7 @@ function abrirModalOT(otData){
 
 function cerrarModal(){ document.getElementById('modal-ot').classList.remove('open'); }
 
-function guardarOT(){
+async function guardarOT(){
   const editId = document.getElementById('ot-edit-id').value;
 
   // Actividades
@@ -1923,6 +1923,23 @@ function guardarOT(){
   cerrarModal();
   renderOTs();
   toast('✔ OT guardada: ' + ot.num);
+
+  // ── Sincronizar con Firebase ──
+  if(typeof window.pushOTToFirebase === 'function'){
+    try {
+      setSyncBadge('syncing');
+      const newId = await window.pushOTToFirebase(ot);
+      if(newId && !editId){
+        OTs[0].id = newId;
+        localStorage.setItem('mant_ots_2026', JSON.stringify(OTs));
+      }
+      setSyncBadge('online');
+      toast('☁ Sincronizado con Firebase');
+    } catch(e){
+      setSyncBadge('offline');
+      console.error('Firebase sync error:', e);
+    }
+  }
 }
 
 function crearOTDesde(a){
@@ -3405,32 +3422,6 @@ window.pushOTToFirebase = async function(ot) {
     toast('⚠ Error al sincronizar con Firebase: ' + e.message, true);
   }
 };
-
-// ── Hook guardarOT → Firebase ──
-const _origGuardarOT = window.guardarOT;
-if (_origGuardarOT) {
-  window.guardarOT = async function() {
-    const editId = document.getElementById('ot-edit-id')?.value || '';
-    _origGuardarOT();
-    setTimeout(async () => {
-      try {
-        setSyncBadge('syncing');
-        // Buscar la OT que se acaba de guardar
-        const ot = editId
-          ? OTs.find(o => o.id === editId)
-          : OTs[0];
-        if (ot) {
-          await window.pushOTToFirebase(ot);
-          setSyncBadge('online');
-          toast('✔ OT sincronizada con Firebase');
-        }
-      } catch(e) {
-        setSyncBadge('offline');
-        console.error('Sync error:', e);
-      }
-    }, 400);
-  };
-}
 
 console.log('Firebase conectado: mantepro-2026');
 </script>
