@@ -1941,13 +1941,21 @@ async function guardarOT(){
         toast('⚠ Error Firebase: ' + (e.message||e.code||e), true);
         console.error('Firebase sync error:', e);
       }
-    } else {
-      toast('⚠ Firebase no disponible aún', true);
-      console.warn('pushOTToFirebase no está definido');
     }
   };
-  // Esperar 800ms para que el módulo Firebase esté listo
-  setTimeout(doSync, 800);
+
+  // Si Firebase ya está listo, sincroniza de inmediato
+  // Si no, espera el evento firebase-ready
+  if(window._firebaseReady){
+    doSync();
+  } else {
+    window.addEventListener('firebase-ready', doSync, { once: true });
+    // Timeout de seguridad por si firebase-ready nunca llega
+    setTimeout(()=>{
+      if(typeof window.pushOTToFirebase === 'function') doSync();
+      else toast('⚠ Firebase no disponible — OT guardada solo localmente', true);
+    }, 5000);
+  }
 }
 
 function crearOTDesde(a){
